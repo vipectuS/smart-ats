@@ -1,0 +1,14 @@
+--- ResumeService.kt
++++ ResumeService.kt
+@@ -1,9 +1,11 @@
+ package com.smartats.backend.service
+ 
+ import com.smartats.backend.domain.Resume
++import com.smartats.backend.dto.PageResponse
+ import com.smartats.backend.dto.resume.CreateResumeRequest
+ import com.smartats.backend.dto.resume.ResumeParseTriggerResponse
+ import com.smartats.backend.dto.resume.ResumeResponse
+ import com.smartats.backend.exception.ResourceNotFoundException
+ import com.smartats.backend.queue.ResumeQueueProducer
+ import com.smartats.backend.repository.ResumeRepository
++import org.springframework.data.domain.PageRequest

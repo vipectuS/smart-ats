@@ -1,0 +1,22 @@
+# Operating system / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Root-level temporary outputs
+build.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build.log
+
+# Backend
+backend/target/
+
+# AI service
+ai-service/.venv/
+ai-service/.pytest_cache/
+ai-service/__pycache__/
+ai-service/app/__pycache__/
+ai-service/tests/__pycache__/

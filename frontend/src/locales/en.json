@@ -1,0 +1,20 @@
+{
+  "login": {
+    "title": "Smart ATS",
+    "welcome": "Welcome back, please sign in.",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign In",
+    "authenticating": "Authenticating...",
+    "errorMsg": "Login failed",
+    "mockAdmin": "Default Mock Admin: user = admin | password = admin"
+  },
+  "layout": {
+    "dashboard": "Dashboard",
+    "jobs": "Jobs",
+    "resumes": "Resumes",
+    "logout": "Logout",
+    "newJob": "+ New Job",
+    "welcomeMsg": "Hello, welcome back to the recruitment center."
+  }
+}

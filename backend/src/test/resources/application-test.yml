@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:smartats;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+    locations: classpath:db/test-migration
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      repositories:
+        enabled: false
+
+app:
+  security:
+    jwt:
+      secret: test-secret-key-that-is-safely-long-enough-for-hmac-256
+      expiration-minutes: 30
+  embedding:
+    dimension: 1536
+    ai-service-base-url: http://127.0.0.1:18081
+    embedding-path: /api/embeddings
+    job-fit-report-path: /api/job-fit-report
+    native-vector-storage-enabled: false
+    pgvector-query-enabled: false
+  internal-callback:
+    header-name: X-Internal-Api-Key
+    api-key: test-internal-callback-key
+  resume-queue:
+    channel: resume.parse.requests.test
+    listener-enabled: false
+    mock-processing-delay-millis: 1

@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: smart-ats-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:smart_ats}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:talamh}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      repositories:
+        enabled: false
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:smart-ats-jwt-secret-key-should-be-at-least-32-bytes-long}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+  embedding:
+    dimension: ${EMBEDDING_DIMENSION:1536}
+    ai-service-base-url: ${AI_SERVICE_BASE_URL:http://127.0.0.1:8000}
+    embedding-path: ${AI_SERVICE_EMBEDDING_PATH:/api/embeddings}
+    job-fit-report-path: ${AI_SERVICE_JOB_FIT_REPORT_PATH:/api/job-fit-report}
+    request-timeout-millis: ${EMBEDDING_REQUEST_TIMEOUT_MILLIS:5000}
+    native-vector-storage-enabled: ${EMBEDDING_NATIVE_VECTOR_STORAGE_ENABLED:true}
+    pgvector-query-enabled: ${EMBEDDING_PGVECTOR_QUERY_ENABLED:true}
+  internal-callback:
+    header-name: ${INTERNAL_CALLBACK_HEADER_NAME:X-Internal-Api-Key}
+    api-key: ${INTERNAL_CALLBACK_API_KEY:smart-ats-internal-callback-key}
+  resume-queue:
+    channel: ${RESUME_QUEUE_CHANNEL:resume.parse.requests}
+    listener-enabled: ${RESUME_QUEUE_LISTENER_ENABLED:true}
+    mock-processing-delay-millis: ${RESUME_QUEUE_MOCK_DELAY_MS:250}
+
+server:
+  port: 18080

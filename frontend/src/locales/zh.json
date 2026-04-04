@@ -1,0 +1,20 @@
+{
+  "login": {
+    "title": "智能招聘系统",
+    "welcome": "欢迎回来，请登录。",
+    "username": "用户名",
+    "password": "密码",
+    "signIn": "登录",
+    "authenticating": "认证中...",
+    "errorMsg": "登录失败",
+    "mockAdmin": "默认模拟管理员: 用户名 = admin | 密码 = admin"
+  },
+  "layout": {
+    "dashboard": "数据看板",
+    "jobs": "职位管理",
+    "resumes": "简历库",
+    "logout": "退出登录",
+    "newJob": "+ 发布新职位",
+    "welcomeMsg": "你好，欢迎回到招聘中心。"
+  }
+}

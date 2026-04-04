@@ -1,0 +1,94 @@
+package com.smartats.backend.service
+
+import com.smartats.backend.config.ResumeQueueProperties
+import com.smartats.backend.domain.Resume
+import com.smartats.backend.dto.resume.CreateResumeRequest
+import com.smartats.backend.dto.resume.ResumeParseTriggerResponse
+import com.smartats.backend.dto.resume.ResumeResponse
+import com.smartats.backend.exception.ResourceNotFoundException
+import com.smartats.backend.queue.ResumeParseMessage
+import com.smartats.backend.queue.ResumeQueueProducer
+import com.smartats.backend.repository.ResumeRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import java.util.UUID
+
+@Service
+class ResumeService(
+    private val resumeRepository: ResumeRepository,
+    private val resumeQueueProducer: ResumeQueueProducer,
+    private val resumeQueueProperties: ResumeQueueProperties,
+) {
+
+    companion object {
+        const val STATUS_PENDING_PARSE = "PENDING_PARSE"
+        const val STATUS_PARSING = "PARSING"
+        const val STATUS_PARSED = "PARSED"
+        const val STATUS_PARSE_FAILED = "PARSE_FAILED"
+    }
+
+    @Transactional
+    fun createResume(request: CreateResumeRequest): ResumeResponse {
+        val resume = Resume(
+            candidateName = request.candidateName?.trim(),
+            contactInfo = request.contactInfo?.trim(),
+            rawContentReference = request.rawContentReference.trim(),
+            parsedData = request.parsedData,
+            status = STATUS_PENDING_PARSE,
+        )
+
+        return ResumeResponse.from(resumeRepository.save(resume))
+    }
+
+    @Transactional
+    fun triggerParse(resumeId: UUID): ResumeParseTriggerResponse {
+        val resume = getResumeEntity(resumeId)
+        val message = ResumeParseMessage(
+            resumeId = requireNotNull(resume.id),
+            rawContentReference = resume.rawContentReference,
+            requestedAt = Instant.now(),
+        )
+
+        resumeQueueProducer.publish(message)
+
+        return ResumeParseTriggerResponse(
+            resumeId = message.resumeId,
+            status = resume.status,
+            queued = true,
+            channel = resumeQueueProperties.channel,
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getResume(resumeId: UUID): ResumeResponse {
+        return ResumeResponse.from(getResumeEntity(resumeId))
+    }
+
+    @Transactional
+    fun markParsing(resumeId: UUID) {
+        val resume = getResumeEntity(resumeId)
+        resume.status = STATUS_PARSING
+        resumeRepository.save(resume)
+    }
+
+    @Transactional
+    fun markParsed(resumeId: UUID, parsedData: Map<String, Any>) {
+        val resume = getResumeEntity(resumeId)
+        resume.status = STATUS_PARSED
+        resume.parsedData = parsedData
+        resumeRepository.save(resume)
+    }
+
+    @Transactional
+    fun markParseFailed(resumeId: UUID) {
+        val resume = getResumeEntity(resumeId)
+        resume.status = STATUS_PARSE_FAILED
+        resumeRepository.save(resume)
+    }
+
+    private fun getResumeEntity(resumeId: UUID): Resume {
+        return resumeRepository.findById(resumeId)
+            .orElseThrow { ResourceNotFoundException("Resume not found") }
+    }
+}
