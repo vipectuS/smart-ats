@@ -5,6 +5,10 @@
 
 # Root-level temporary outputs
 build.log
+*.orig
+*.patch
+*.rej
+*.pyc
 
 # Frontend
 frontend/node_modules/
