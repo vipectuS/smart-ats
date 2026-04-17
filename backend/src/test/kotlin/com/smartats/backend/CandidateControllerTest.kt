@@ -12,6 +12,8 @@ import com.smartats.backend.domain.Resume
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
 import com.smartats.backend.dto.auth.LoginRequest
+import com.smartats.backend.queue.ResumeParseMessage
+import com.smartats.backend.queue.ResumeQueueProducer
 import com.smartats.backend.repository.JobApplicationRepository
 import com.smartats.backend.repository.JobFavoriteRepository
 import com.smartats.backend.repository.JobIgnoreRepository
@@ -24,9 +26,11 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mockingDetails
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.http.MediaType
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.jdbc.core.JdbcTemplate
@@ -77,6 +81,9 @@ class CandidateControllerTest {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @MockBean
+    private lateinit var resumeQueueProducer: ResumeQueueProducer
 
     @BeforeEach
     fun setUp() {
@@ -151,6 +158,26 @@ class CandidateControllerTest {
                     objectMapper.writeValueAsString(
                         mapOf(
                             "rawContentReference" to "s3://resumes/resume-owner.pdf",
+                            "browserPreprocessedPayload" to mapOf(
+                                "engine" to "pdfjs-browser-renderer",
+                                "mode" to "pdf-to-page-previews",
+                                "sourceFileName" to "resume-owner.pdf",
+                                "sourceMimeType" to "application/pdf",
+                                "sourceFileSize" to 2048,
+                                "derivedReference" to "browser-pdf-preview://abc123/2p/resume-owner.pdf",
+                                "pageCount" to 2,
+                                "generatedAt" to "2026-04-05T09:30:00Z",
+                                "warnings" to listOf("transport-first-six-pages"),
+                                "pagePreviews" to listOf(
+                                    mapOf(
+                                        "pageNumber" to 1,
+                                        "width" to 280,
+                                        "height" to 396,
+                                        "imageDataUrl" to "data:image/jpeg;base64,preview-1",
+                                        "textPreview" to "Resume Owner profile",
+                                    ),
+                                ),
+                            ),
                         ),
                     ),
                 ),
@@ -163,6 +190,60 @@ class CandidateControllerTest {
         val savedResume = resumeRepository.findAll().single()
         assertNotNull(savedResume.ownerUser)
         assertEquals(owner.id, savedResume.ownerUser?.id)
+        assertEquals(2, savedResume.browserPreprocessedPayload?.get("pageCount"))
+
+        val invocation = mockingDetails(resumeQueueProducer).invocations.single {
+            it.method.name == "publish"
+        }
+        val publishedMessage = invocation.arguments.first() as ResumeParseMessage
+        assertEquals(requireNotNull(savedResume.id), publishedMessage.resumeId)
+        assertEquals("s3://resumes/resume-owner.pdf", publishedMessage.rawContentReference)
+        assertEquals(2, publishedMessage.browserPreprocessedPayload?.get("pageCount"))
+        assertEquals(emptyList<Any>(), publishedMessage.externalContentReferences)
+    }
+
+    @Test
+    fun `candidate upload publishes external content references from candidate profile`() {
+        val accessToken = obtainAccessToken("resume_links", "resume_links@example.com", UserRole.CANDIDATE)
+
+        mockMvc.perform(
+            put("/api/candidate/profile")
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "githubUrl" to "https://github.com/resume-links",
+                            "portfolioUrl" to "https://resume-links.dev",
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/resumes/upload")
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "rawContentReference" to "browser-pdf-preview://resume-links/resume.pdf",
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isCreated)
+
+        val publishedMessage = mockingDetails(resumeQueueProducer).invocations.single {
+            it.method.name == "publish"
+        }.arguments.first() as ResumeParseMessage
+
+        assertEquals(2, publishedMessage.externalContentReferences.size)
+        assertEquals("github", publishedMessage.externalContentReferences[0].sourceType)
+        assertEquals("https://github.com/resume-links", publishedMessage.externalContentReferences[0].url)
+        assertEquals("portfolio", publishedMessage.externalContentReferences[1].sourceType)
+        assertEquals("https://resume-links.dev", publishedMessage.externalContentReferences[1].url)
     }
 
     @Test
@@ -220,6 +301,141 @@ class CandidateControllerTest {
             .andExpect(jsonPath("$.data.recommendations[0].xaiReport.improvementSuggestions[0]").exists())
             .andExpect(jsonPath("$.data.recommendations[0].actionState.applied").value(false))
                 .andExpect(jsonPath("$.data.recommendations[0].matchedSkills[0]").value("Java"))
+    }
+
+    @Test
+    fun `fresh candidate upload blocks matching until parsed then unlocks recommendation and action timeline`() {
+        val candidateToken = obtainAccessToken("fresh_candidate", "fresh_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("fresh_candidate").orElseThrow()
+        val hrOwner = ensureUser("fresh_hr", "fresh_hr@example.com", UserRole.HR)
+
+        val matchingJob = jobRepository.save(
+            Job(
+                title = "Backend Kotlin Engineer",
+                description = "Need Kotlin Spring Boot and Docker delivery experience",
+                requirements = mapOf("skills" to listOf("Kotlin", "Spring Boot", "Docker")),
+                createdBy = hrOwner,
+            ),
+        )
+        jobRepository.save(
+            Job(
+                title = "Brand Designer",
+                description = "Need Figma and illustration skills",
+                requirements = mapOf("skills" to listOf("Figma", "Illustration")),
+                createdBy = hrOwner,
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/resumes/upload")
+                .header("Authorization", "Bearer $candidateToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "rawContentReference" to "browser-pdf-preview://fresh-candidate/resume.pdf",
+                            "browserPreprocessedPayload" to mapOf(
+                                "engine" to "pdfium-wasm",
+                                "mode" to "pdf-to-page-previews",
+                                "sourceFileName" to "fresh-candidate-resume.pdf",
+                                "sourceMimeType" to "application/pdf",
+                                "sourceFileSize" to 4096,
+                                "derivedReference" to "browser-pdf-preview://fresh-candidate/resume.pdf",
+                                "pageCount" to 1,
+                                "generatedAt" to "2026-04-05T10:15:00Z",
+                                "warnings" to emptyList<String>(),
+                                "pagePreviews" to listOf(
+                                    mapOf(
+                                        "pageNumber" to 1,
+                                        "width" to 280,
+                                        "height" to 396,
+                                        "imageDataUrl" to "data:image/jpeg;base64,fresh-preview-1",
+                                        "textPreview" to "Fresh Candidate summary",
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.data.status").value("PENDING_PARSE"))
+
+        mockMvc.perform(
+            get("/api/candidate/profile")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.latestResume.status").value("PENDING_PARSE"))
+
+        mockMvc.perform(
+            post("/api/candidate/match-jobs")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Candidate must upload and parse a resume before matching jobs"))
+
+        val pendingResume = resumeRepository.findAll().single()
+        pendingResume.ownerUser = candidate
+        pendingResume.status = "PARSED"
+        pendingResume.parsedData = sampleParsedData(
+            fullName = "Fresh Candidate",
+            email = "fresh_candidate@example.com",
+            skills = listOf("Kotlin", "Spring Boot", "CI/CD"),
+            summary = "Built Kotlin backend services and deployment pipelines",
+        )
+        pendingResume.parseFailureReason = null
+        resumeRepository.save(pendingResume)
+
+        mockMvc.perform(
+            get("/api/candidate/profile")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.latestResume.status").value("PARSED"))
+            .andExpect(jsonPath("$.data.latestResume.parsedData.basicInfo.fullName").value("Fresh Candidate"))
+
+        mockMvc.perform(
+            post("/api/candidate/match-jobs")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.evaluatedCount").value(2))
+            .andExpect(jsonPath("$.data.recommendations[0].title").value("Backend Kotlin Engineer"))
+            .andExpect(jsonPath("$.data.recommendations[0].actionState.applied").value(false))
+
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/apply", requireNotNull(matchingJob.id))
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.data.actionState.applied").value(true))
+
+        mockMvc.perform(
+            post("/api/candidate/match-jobs")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.recommendations[0].title").value("Backend Kotlin Engineer"))
+            .andExpect(jsonPath("$.data.recommendations[0].actionState.applied").value(true))
+            .andExpect(jsonPath("$.data.recommendations[0].actionState.applicationStatus").value("APPLIED"))
+
+        mockMvc.perform(
+            get("/api/candidate/applications")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].title").value("Backend Kotlin Engineer"))
+            .andExpect(jsonPath("$.data[0].actionType").value("APPLIED"))
+
+        mockMvc.perform(
+            get("/api/candidates/me/timeline")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data[0].action").value("APPLIED"))
+            .andExpect(jsonPath("$.data[0].jobTitle").value("Backend Kotlin Engineer"))
     }
 
     @Test
@@ -383,6 +599,60 @@ class CandidateControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.length()").value(0))
+    }
+
+    @Test
+    fun `candidate application list reflects interview status and review note timeline`() {
+        val candidateToken = obtainAccessToken("reviewed_candidate", "reviewed_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("reviewed_candidate").orElseThrow()
+        val hrOwner = ensureUser("review_flow_hr", "review_flow_hr@example.com", UserRole.HR)
+
+        val job = jobRepository.save(
+            Job(
+                title = "Interview Role",
+                description = "Role that moves into interview stage",
+                requirements = mapOf("skills" to listOf("Kotlin", "Vue")),
+                createdBy = hrOwner,
+            ),
+        )
+
+        val application = jobApplicationRepository.save(
+            JobApplication(
+                user = candidate,
+                job = job,
+                status = JobApplicationStatus.INTERVIEW,
+                reviewNote = "已完成初筛，待技术面试。",
+                createdAt = LocalDateTime.of(2026, 4, 5, 9, 0, 0),
+                updatedAt = LocalDateTime.of(2026, 4, 5, 11, 30, 0),
+            ),
+        )
+
+        jdbcTemplate.update(
+            "UPDATE job_applications SET created_at = ?, updated_at = ?, review_note = ? WHERE id = ?",
+            LocalDateTime.of(2026, 4, 5, 9, 0, 0),
+            LocalDateTime.of(2026, 4, 5, 11, 30, 0),
+            "已完成初筛，待技术面试。",
+            requireNotNull(application.id),
+        )
+
+        mockMvc.perform(
+            get("/api/candidate/applications")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].title").value("Interview Role"))
+            .andExpect(jsonPath("$.data[0].actionType").value("INTERVIEW"))
+            .andExpect(jsonPath("$.data[0].actionState.applicationStatus").value("INTERVIEW"))
+            .andExpect(jsonPath("$.data[0].actionUpdatedAt").value("2026-04-05T11:30:00"))
+
+        mockMvc.perform(
+            get("/api/candidates/me/timeline")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data[0].action").value("INTERVIEW"))
+            .andExpect(jsonPath("$.data[0].jobTitle").value("Interview Role"))
     }
 
     @Test

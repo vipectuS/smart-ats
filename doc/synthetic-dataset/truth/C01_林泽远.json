@@ -1,0 +1,39 @@
+{
+  "candidateName": "林泽远",
+  "email": "linzeyuan@example.com",
+  "phone": "13800001231",
+  "summary": "2 年后端开发经验，长期参与招聘和协同类系统开发，熟悉 Kotlin、Spring Boot、PostgreSQL、Redis 与 Docker。能够独立完成接口设计、数据库建模和异步任务接入，对推荐链路和队列解耦有实际项目经验。",
+  "skills": [
+    "Kotlin",
+    "Java",
+    "Spring Boot",
+    "PostgreSQL",
+    "Redis",
+    "Docker",
+    "REST API Design",
+    "Git"
+  ],
+  "workExperiences": [
+    {
+      "company": "云栈软件科技有限公司",
+      "title": "后端开发工程师",
+      "startDate": "2023.07",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "北桥信息工作室",
+      "title": "Java 开发实习生",
+      "startDate": "2022.03",
+      "endDate": "2023.06"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构东海大学",
+      "degree": "本科",
+      "fieldOfStudy": "软件工程",
+      "startDate": "2018.09",
+      "endDate": "2022.06"
+    }
+  ]
+}

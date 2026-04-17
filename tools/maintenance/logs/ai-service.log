@@ -1,0 +1,376 @@
+INFO:     Started server process [2713473]
+INFO:     Waiting for application startup.
+2026-04-16 23:09:06,281 INFO [app.consumer] Resume queue listener started with channel=resume.parse.requests and fallback queue=resume_parsing_queue
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-04-16 23:09:06,282 INFO [app.consumer] Subscribed to backend queue channel=resume.parse.requests
+INFO:     127.0.0.1:33942 - "GET /health HTTP/1.1" 200 OK
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:33956 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:33984 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:33990 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:33992 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34006 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34016 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34026 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34028 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34226 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:34246 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34254 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34284 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34298 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34304 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34424 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:34436 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34454 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34466 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34484 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34654 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:34774 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47102 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47110 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47114 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47178 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47190 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47196 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47212 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47272 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47292 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+INFO:     127.0.0.1:47378 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:47408 - "POST /api/job-fit-report HTTP/1.1" 422 Unprocessable Content
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+WARNING:  Unsupported upgrade request.
+WARNING:  Invalid HTTP request received.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-04-16 23:09:00,204 INFO [app.consumer] Resume queue listener stopped
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2711739]

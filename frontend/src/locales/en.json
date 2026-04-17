@@ -7,7 +7,7 @@
     "signIn": "Sign In",
     "authenticating": "Authenticating...",
     "errorMsg": "Login failed",
-    "mockAdmin": "Default Mock Admin: user = admin | password = admin"
+    "mockAdmin": "Local development can prefill a test account through local config"
   },
   "layout": {
     "dashboard": "Dashboard",

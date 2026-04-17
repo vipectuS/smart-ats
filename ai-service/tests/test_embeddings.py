@@ -42,3 +42,17 @@ def test_embedding_service_uses_litellm_and_enforces_dimensions(monkeypatch) -> 
     response = __import__("asyncio").run(service.generate("resume text"))
 
     assert response == EmbeddingResponse(embedding=[0.3, -0.1, 0.8], dimensions=3)
+
+
+def test_embedding_service_falls_back_to_local_embedding_when_provider_fails(monkeypatch) -> None:
+    async def failing_aembedding(**_kwargs):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr("app.services.embedding.aembedding", failing_aembedding)
+
+    service = EmbeddingService(Settings(EMBEDDING_DIMENSIONS=8))
+    response = __import__("asyncio").run(service.generate("kotlin spring boot redis"))
+
+    assert response.dimensions == 8
+    assert len(response.embedding) == 8
+    assert any(value != 0.0 for value in response.embedding)

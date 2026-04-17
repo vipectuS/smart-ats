@@ -19,7 +19,7 @@
             class="w-full px-4 py-3 bg-gray-100/50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
             id="username" 
             type="text" 
-            placeholder="admin"
+            placeholder="请输入用户名"
             required
           >
         </div>
@@ -36,6 +36,10 @@
             placeholder="******"
             required
           >
+        </div>
+
+        <div v-if="successMsg" class="text-emerald-700 text-sm font-medium text-center bg-emerald-50 py-3 rounded-lg border border-emerald-100">
+          {{ successMsg }}
         </div>
 
         <div v-if="authStore.error" class="text-red-600 text-sm font-medium text-center bg-red-50 py-3 rounded-lg border border-red-100">
@@ -55,8 +59,16 @@
         </button>
       </form>
       
-      <div class="mt-8 pt-6 border-t border-gray-100 text-center text-gray-400 text-xs text-balance">
-        默认模拟管理员: 用户名 = admin | 密码 = admin
+      <div class="mt-8 space-y-4 pt-6 border-t border-gray-100 text-center">
+        <p class="text-sm text-gray-500">
+          还没有账号？
+          <router-link to="/register" class="font-semibold text-blue-600 transition hover:text-blue-700 hover:underline">
+            立即注册
+          </router-link>
+        </p>
+        <p class="text-xs text-gray-400 text-balance">
+          开发环境可通过本地环境变量预填测试账号，正式流程请使用真实注册或已存在账号登录
+        </p>
       </div>
     </div>
   </div>
@@ -65,23 +77,25 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
-const username = ref('admin');
-const password = ref('admin'); 
+const username = ref(import.meta.env.VITE_DEV_DEFAULT_USERNAME || '');
+const password = ref(import.meta.env.VITE_DEV_DEFAULT_PASSWORD || ''); 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const successMsg = ref('');
 
 const handleLogin = async () => {
-  const success = await authStore.login({
+  const user = await authStore.login({
     username: username.value,
     password: password.value
   });
   
-  if (success) {
-    router.push({ name: 'dashboard' });
+  if (user) {
+    router.push({ name: user.role === 'CANDIDATE' ? 'candidateDashboard' : 'dashboard' });
   }
 };
 
@@ -89,6 +103,11 @@ const handleLogin = async () => {
 let animationFrameId: number;
 
 onMounted(() => {
+  if (route.query.registered === '1') {
+    successMsg.value = '注册成功，请使用新账号登录。';
+    router.replace({ name: 'login' });
+  }
+
   const canvas = canvasRef.value;
   if (!canvas) return;
   const ctx = canvas.getContext('2d');

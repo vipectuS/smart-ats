@@ -141,6 +141,7 @@ class RecommendationService(
             .toList()
 
         jobRecommendationRepository.deleteByJobId(jobId)
+        jobRecommendationRepository.flush()
 
         if (scoredRecommendations.isEmpty()) {
             return JobEvaluationResponse(
@@ -472,34 +473,44 @@ class RecommendationService(
     }
 
     private fun ensureJobEmbedding(job: Job): String {
-        job.embedding?.takeIf { it.isNotBlank() }?.let { return it }
+        currentJobEmbedding(job)?.let { return it }
 
         val embedding = embeddingService.generateJobEmbedding(job)
         val jobId = requireNotNull(job.id)
         if (embeddingService.shouldUseNativeVectorStorage()) {
             jobRepository.updateEmbedding(jobId, embedding)
-        } else {
             job.embedding = embedding
-            jobRepository.save(job)
+        } else {
+            job.runtimeEmbedding = embedding
         }
-        job.embedding = embedding
+        job.runtimeEmbedding = embedding
         return embedding
     }
 
     private fun ensureResumeEmbedding(resume: Resume): String {
-        resume.embedding?.takeIf { it.isNotBlank() }?.let { return it }
+        currentResumeEmbedding(resume)?.let { return it }
 
         val parsedData = resume.parsedData ?: return ""
         val embedding = embeddingService.generateResumeEmbedding(parsedData)
         val resumeId = requireNotNull(resume.id)
         if (embeddingService.shouldUseNativeVectorStorage()) {
             resumeRepository.updateEmbedding(resumeId, embedding)
-        } else {
             resume.embedding = embedding
-            resumeRepository.save(resume)
+        } else {
+            resume.runtimeEmbedding = embedding
         }
-        resume.embedding = embedding
+        resume.runtimeEmbedding = embedding
         return embedding
+    }
+
+    private fun currentJobEmbedding(job: Job): String? {
+        return job.runtimeEmbedding?.takeIf { it.isNotBlank() }
+            ?: job.embedding?.takeIf { it.isNotBlank() }
+    }
+
+    private fun currentResumeEmbedding(resume: Resume): String? {
+        return resume.runtimeEmbedding?.takeIf { it.isNotBlank() }
+            ?: resume.embedding?.takeIf { it.isNotBlank() }
     }
 
     private fun resolveSemanticDistances(
@@ -532,7 +543,7 @@ class RecommendationService(
     ): Map<UUID, BigDecimal> {
         return resumes.mapNotNull { resume ->
             val resumeId = resume.id ?: return@mapNotNull null
-            val resumeEmbedding = resume.embedding ?: return@mapNotNull resumeId to BigDecimal.ONE
+            val resumeEmbedding = currentResumeEmbedding(resume) ?: return@mapNotNull resumeId to BigDecimal.ONE
             val similarity = embeddingService.cosineSimilarity(jobEmbedding, resumeEmbedding)
             resumeId to BigDecimal.valueOf(1.0 - similarity).setScale(6, RoundingMode.HALF_UP)
         }.toMap()
@@ -568,7 +579,7 @@ class RecommendationService(
     ): Map<UUID, BigDecimal> {
         return jobs.mapNotNull { job ->
             val jobId = job.id ?: return@mapNotNull null
-            val jobEmbedding = job.embedding ?: return@mapNotNull jobId to BigDecimal.ONE
+            val jobEmbedding = currentJobEmbedding(job) ?: return@mapNotNull jobId to BigDecimal.ONE
             val similarity = embeddingService.cosineSimilarity(candidateEmbedding, jobEmbedding)
             jobId to BigDecimal.valueOf(1.0 - similarity).setScale(6, RoundingMode.HALF_UP)
         }.toMap()

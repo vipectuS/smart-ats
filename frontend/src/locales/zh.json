@@ -7,7 +7,7 @@
     "signIn": "登录",
     "authenticating": "认证中...",
     "errorMsg": "登录失败",
-    "mockAdmin": "默认模拟管理员: 用户名 = admin | 密码 = admin"
+    "mockAdmin": "开发环境可通过本地配置预填测试账号"
   },
   "layout": {
     "dashboard": "数据看板",

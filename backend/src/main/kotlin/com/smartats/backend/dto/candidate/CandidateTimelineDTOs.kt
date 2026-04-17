@@ -4,6 +4,8 @@ import java.time.Instant
 
 enum class CandidateTimelineAction {
     APPLIED,
+    INTERVIEW,
+    REJECTED,
     WITHDRAWN,
     FAVORITED,
     UNFAVORITED,

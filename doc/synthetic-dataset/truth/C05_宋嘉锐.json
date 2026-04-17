@@ -1,0 +1,39 @@
+{
+  "candidateName": "宋嘉锐",
+  "email": "songjiarui@example.com",
+  "phone": "13800003455",
+  "summary": "2 年全栈开发经验，熟悉 Vue、TypeScript、Node.js 和 SQL，能够独立完成中小型业务模块从页面实现到接口联调的交付。具备一定后端理解，但在 Kotlin 和分布式缓存方面经验相对有限。",
+  "skills": [
+    "JavaScript",
+    "TypeScript",
+    "Vue 3",
+    "Node.js",
+    "Express",
+    "SQL",
+    "REST API",
+    "Git"
+  ],
+  "workExperiences": [
+    {
+      "company": "明渡产品技术有限公司",
+      "title": "全栈开发工程师",
+      "startDate": "2023.05",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "林汐网络工作室",
+      "title": "Web 开发实习生",
+      "startDate": "2022.03",
+      "endDate": "2023.04"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构西陵大学",
+      "degree": "本科",
+      "fieldOfStudy": "计算机科学与技术",
+      "startDate": "2018.09",
+      "endDate": "2022.06"
+    }
+  ]
+}

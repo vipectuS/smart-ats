@@ -30,6 +30,7 @@ frontend/
 To avoid sending heavy, multi-page PDFs directly to the backend, we offload PDF parsing and rendering to the browser using WebAssembly.
 - The `wasm/` directory will contain or interface with Wasm binaries.
 - When resuming uploading, the frontend processes the document, extracts structural images/redactions locally, and sends clean images + basic text payload to the backend.
+- The current implementation uses PDFium WebAssembly via `@hyzyla/pdfium` in `src/wasm/resumePreprocessor.ts` to generate page previews, text snippets, and a lightweight reference before calling the backend upload contract.
 
 ## 3. UI Charting
 - **ECharts** is our primary visualization library. It should be used for rendering Candidate Radar Profiles to indicate skill distribution visually within dashboard interfaces.

@@ -117,6 +117,35 @@ class ResumeControllerTest {
     }
 
     @Test
+    fun `list resumes returns paginated metadata`() {
+        repeat(3) { index ->
+            resumeRepository.save(
+                Resume(
+                    candidateName = "Paged Candidate ${index + 1}",
+                    contactInfo = "paged${index + 1}@example.com",
+                    rawContentReference = "/tmp/resumes/paged-${index + 1}.pdf",
+                    parsedData = null,
+                    status = if (index == 0) "PENDING_PARSE" else "PARSED",
+                ),
+            )
+        }
+
+        mockMvc.perform(
+            get("/api/resumes")
+                .with(user("resume_admin").roles("HR"))
+                .param("page", "0")
+                .param("size", "2"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.content.length()").value(2))
+            .andExpect(jsonPath("$.data.page").value(0))
+            .andExpect(jsonPath("$.data.size").value(2))
+            .andExpect(jsonPath("$.data.totalElements").value(3))
+            .andExpect(jsonPath("$.data.totalPages").value(2))
+            .andExpect(jsonPath("$.data.last").value(false))
+    }
+
+    @Test
     fun `status endpoint returns current parsing progress`() {
         val resume = resumeRepository.save(
             Resume(

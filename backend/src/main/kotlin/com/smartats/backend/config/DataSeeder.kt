@@ -12,18 +12,27 @@ import org.springframework.security.crypto.password.PasswordEncoder
 class DataSeeder {
 
     @Bean
-    fun seedAdminUser(userRepository: UserRepository, passwordEncoder: PasswordEncoder): CommandLineRunner {
+    fun seedAdminUser(
+        userRepository: UserRepository,
+        passwordEncoder: PasswordEncoder,
+        adminSeedProperties: AdminSeedProperties,
+    ): CommandLineRunner {
         return CommandLineRunner {
-            if (!userRepository.existsByUsername("admin")) {
+            if (!adminSeedProperties.enabled) {
+                return@CommandLineRunner
+            }
+
+            if (!userRepository.existsByUsername(adminSeedProperties.username)) {
                 val admin = User(
-                    username = "admin",
-                    passwordHash = passwordEncoder.encode("admin"),
-                    email = "admin@smartats.local",
+                    username = adminSeedProperties.username,
+                    passwordHash = passwordEncoder.encode(adminSeedProperties.password),
+                    email = adminSeedProperties.email,
                     role = UserRole.ADMIN,
                 )
                 userRepository.save(admin)
-                println("Seeded default admin user (admin/admin)")
+                println("Seeded configured default admin user")
             }
         }
     }
 }
+

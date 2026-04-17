@@ -1,0 +1,90 @@
+[
+  {
+    "sampleId": "C01",
+    "candidateName": "林泽远",
+    "resumeFile": "resumes/C01_林泽远.md",
+    "truthFile": "truth/C01_林泽远.json",
+    "targetDirection": "Backend",
+    "strengths": ["Kotlin", "Spring Boot", "PostgreSQL"],
+    "gaps": ["Kubernetes", "Monitoring"],
+    "expectedTopJobs": ["J01", "J06"],
+    "fitLevel": "high"
+  },
+  {
+    "sampleId": "C02",
+    "candidateName": "周清禾",
+    "resumeFile": "resumes/C02_周清禾.md",
+    "truthFile": "truth/C02_周清禾.json",
+    "targetDirection": "Frontend",
+    "strengths": ["Vue", "TypeScript", "ECharts"],
+    "gaps": ["Node.js"],
+    "expectedTopJobs": ["J02", "J06"],
+    "fitLevel": "high"
+  },
+  {
+    "sampleId": "C03",
+    "candidateName": "许逸晨",
+    "resumeFile": "resumes/C03_许逸晨.md",
+    "truthFile": "truth/C03_许逸晨.json",
+    "targetDirection": "QA",
+    "strengths": ["Pytest", "Selenium", "API Testing"],
+    "gaps": ["Data Visualization"],
+    "expectedTopJobs": ["J03"],
+    "fitLevel": "high"
+  },
+  {
+    "sampleId": "C04",
+    "candidateName": "何沐言",
+    "resumeFile": "resumes/C04_何沐言.md",
+    "truthFile": "truth/C04_何沐言.json",
+    "targetDirection": "Data",
+    "strengths": ["SQL", "Python", "Pandas"],
+    "gaps": ["CI/CD"],
+    "expectedTopJobs": ["J04"],
+    "fitLevel": "high"
+  },
+  {
+    "sampleId": "C05",
+    "candidateName": "宋嘉锐",
+    "resumeFile": "resumes/C05_宋嘉锐.md",
+    "truthFile": "truth/C05_宋嘉锐.json",
+    "targetDirection": "Fullstack",
+    "strengths": ["Vue", "Node.js", "SQL"],
+    "gaps": ["Kotlin", "Redis"],
+    "expectedTopJobs": ["J06", "J02"],
+    "fitLevel": "medium"
+  },
+  {
+    "sampleId": "C06",
+    "candidateName": "唐书宁",
+    "resumeFile": "resumes/C06_唐书宁.md",
+    "truthFile": "truth/C06_唐书宁.json",
+    "targetDirection": "DevOps",
+    "strengths": ["Linux", "Docker", "CI/CD"],
+    "gaps": ["Application Development"],
+    "expectedTopJobs": ["J05", "J01"],
+    "fitLevel": "medium"
+  },
+  {
+    "sampleId": "C07",
+    "candidateName": "顾安然",
+    "resumeFile": "resumes/C07_顾安然.md",
+    "truthFile": "truth/C07_顾安然.json",
+    "targetDirection": "Operations",
+    "strengths": ["Coordination", "Content Planning", "Reporting"],
+    "gaps": ["Coding", "Testing Automation"],
+    "expectedTopJobs": ["J04"],
+    "fitLevel": "low"
+  },
+  {
+    "sampleId": "C08",
+    "candidateName": "乔昀汀",
+    "resumeFile": "resumes/C08_乔昀汀.md",
+    "truthFile": "truth/C08_乔昀汀.json",
+    "targetDirection": "Java Backend",
+    "strengths": ["Java", "Spring Boot", "MySQL"],
+    "gaps": ["Kotlin", "Redis"],
+    "expectedTopJobs": ["J01", "J06"],
+    "fitLevel": "medium"
+  }
+]

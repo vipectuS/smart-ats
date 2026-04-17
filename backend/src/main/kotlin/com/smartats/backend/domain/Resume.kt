@@ -26,8 +26,15 @@ class Resume(
     @Column(name = "parsed_data", columnDefinition = "jsonb")
     var parsedData: Map<String, Any>? = null,
 
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "browser_preprocessed_payload", columnDefinition = "jsonb")
+    var browserPreprocessedPayload: Map<String, Any>? = null,
+
+    @Column(name = "embedding", columnDefinition = "vector(1536)", insertable = false, updatable = false)
     var embedding: String? = null,
+
+    @Transient
+    var runtimeEmbedding: String? = null,
 
     @Column(name = "parse_failure_reason", columnDefinition = "TEXT")
     var parseFailureReason: String? = null,

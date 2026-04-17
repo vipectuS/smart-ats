@@ -1,0 +1,39 @@
+{
+  "candidateName": "何沐言",
+  "email": "hemuyan@example.com",
+  "phone": "13800008124",
+  "summary": "1.5 年数据分析经验，熟悉 SQL、Python、Pandas 和数据可视化，参与过招聘漏斗分析、转化率跟踪和周报体系建设。能够从业务数据中提取关键指标并输出结构化分析结论。",
+  "skills": [
+    "SQL",
+    "Python",
+    "Pandas",
+    "Excel",
+    "Data Visualization",
+    "Tableau",
+    "A/B Testing",
+    "Reporting"
+  ],
+  "workExperiences": [
+    {
+      "company": "澄明数据顾问有限公司",
+      "title": "数据分析师",
+      "startDate": "2023.07",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "清屿商业分析工作室",
+      "title": "数据实习生",
+      "startDate": "2022.06",
+      "endDate": "2023.06"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构海岳大学",
+      "degree": "本科",
+      "fieldOfStudy": "信息管理与信息系统",
+      "startDate": "2019.09",
+      "endDate": "2023.06"
+    }
+  ]
+}

@@ -6,23 +6,22 @@ import com.smartats.backend.config.EmbeddingProperties
 import com.smartats.backend.domain.Job
 import com.smartats.backend.dto.talent.TalentProfile
 import org.springframework.stereotype.Service
-import org.springframework.boot.web.client.RestTemplateBuilder
-import org.springframework.http.MediaType
-import org.springframework.web.client.RestClientException
-import org.springframework.web.client.RestTemplate
 import java.time.Duration
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import kotlin.math.sqrt
 
 @Service
 class EmbeddingService(
     private val embeddingProperties: EmbeddingProperties,
     private val objectMapper: ObjectMapper,
-    restTemplateBuilder: RestTemplateBuilder,
 ) {
 
-    private val restTemplate: RestTemplate = restTemplateBuilder
-        .setConnectTimeout(Duration.ofMillis(embeddingProperties.requestTimeoutMillis))
-        .setReadTimeout(Duration.ofMillis(embeddingProperties.requestTimeoutMillis))
+    private val httpClient: HttpClient = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofMillis(embeddingProperties.requestTimeoutMillis))
+        .version(HttpClient.Version.HTTP_1_1)
         .build()
 
     fun generateJobEmbedding(job: Job): String {
@@ -74,14 +73,25 @@ class EmbeddingService(
 
     private fun requestRemoteEmbedding(text: String): String {
         val url = embeddingProperties.aiServiceBaseUrl.trimEnd('/') + embeddingProperties.embeddingPath
+        val requestBody = objectMapper.writeValueAsString(mapOf("text" to text))
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .timeout(Duration.ofMillis(embeddingProperties.requestTimeoutMillis))
+            .version(HttpClient.Version.HTTP_1_1)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build()
+
         val responseBody = try {
-            restTemplate.postForObject(
-                url,
-                mapOf("text" to text),
-                String::class.java,
-            ) ?: throw IllegalStateException("Embedding service returned an empty body")
-        } catch (exception: RestClientException) {
-            throw IllegalStateException("Embedding service request failed", exception)
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() !in 200..299) {
+                throw IllegalStateException("Embedding service returned HTTP ${response.statusCode()}: ${response.body()}")
+            }
+            response.body().ifBlank { throw IllegalStateException("Embedding service returned an empty body") }
+        } catch (exception: Exception) {
+            val reason = exception.cause?.message ?: exception.message ?: "unknown remote error"
+            throw IllegalStateException("Embedding service request failed: $reason", exception)
         }
 
         val root = objectMapper.readTree(responseBody)

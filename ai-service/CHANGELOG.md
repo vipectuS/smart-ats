@@ -1,5 +1,70 @@
 # AI-Service Changelog
 
+## 2026-04-16
+
+### Demo Bootstrap Compatibility
+- Updated [ai-service/.env.example](ai-service/.env.example) so local bootstrap paths now include `BACKEND_PARSE_FAILED_PATH=/internal/api/resumes/{resumeId}/parse-failed`, keeping the AI-service failure callback contract aligned with the backend internal API during unified demo startup.
+- Verified the current local bootstrap path against the project virtual environment and the maintenance scripts, so AI-service can participate in `tools/maintenance/bootstrap_local_demo.sh --with-demo-data` instead of remaining a separately managed manual step.
+
+#### Next
+- If local demo scripts later need stronger environment isolation, move the current bootstrap-specific callback and parser defaults into a dedicated demo profile rather than relying only on the shared `.env` template.
+
+## 2026-04-05
+
+### Synthetic Dataset-Aware Mock Parsing
+- Updated [ai-service/app/config.py](ai-service/app/config.py), [ai-service/app/services/parser.py](ai-service/app/services/parser.py), [ai-service/.env.example](ai-service/.env.example), and [ai-service/GUIDE.md](ai-service/GUIDE.md) so local `mock` parser mode can now detect synthetic sample ids such as `C01` from backend references or browser-side file names, load the matching truth JSON from `SYNTHETIC_DATASET_DIR`, and emit a stronger deterministic TalentProfile for demo and evaluation runs.
+- Extended [ai-service/tests/test_consumer.py](ai-service/tests/test_consumer.py) with regression coverage for the synthetic truth-loading path, while keeping browser-side summary and external web context merged into the final profile summary.
+
+#### Next
+- Decide whether the synthetic truth-aware path should stay limited to local/demo mode only, or become a versioned fallback parser for offline benchmark generation as well.
+- If later demo packs expand beyond the current `Cxx` naming convention, formalize the synthetic sample lookup contract instead of relying only on file-name pattern matching.
+
+### Local Embedding Fallback
+- Updated [ai-service/app/services/embedding.py](ai-service/app/services/embedding.py) so `POST /api/embeddings` now falls back to a deterministic local hashed vector when the upstream embedding provider is unavailable, preventing local recommendation and demo flows from failing closed with HTTP 500.
+- Extended [ai-service/tests/test_embeddings.py](ai-service/tests/test_embeddings.py) with regression coverage for the fallback path.
+
+#### Next
+- Keep using the local fallback only as a development safety net; when a real provider is configured, verify dimensions and retrieval quality against the production model before Phase 4 score tuning.
+
+### Structured GitHub Repository Context
+- Extended [ai-service/app/services/content_extractor.py](ai-service/app/services/content_extractor.py) so GitHub links are no longer treated as undifferentiated HTML pages: the extractor now derives a controlled minimal field set including repository owner/name, description, README excerpt, detected languages, and recent public signals such as stars or update hints.
+- Updated [ai-service/app/services/parser.py](ai-service/app/services/parser.py) so GitHub references are injected into the resume parsing prompt as structured repository context instead of plain page dumps, while portfolio links still fall back to generic HTML text extraction.
+- Extended [ai-service/tests/test_consumer.py](ai-service/tests/test_consumer.py) with coverage for structured GitHub extraction and prompt assembly. Re-ran `tests/test_consumer.py` successfully with 9 passing tests.
+
+#### Next
+- Decide whether structured GitHub fields should also feed the embedding pipeline directly so Phase 4 matching can use the same multimodal evidence instead of parsing-only context.
+- Keep the GitHub scope intentionally narrow; if richer repository metadata is needed later, add it behind a versioned contract rather than reintroducing uncontrolled full-page scraping.
+
+### External HTML Context in Resume Parsing
+- Extended [ai-service/app/schemas/resume.py](ai-service/app/schemas/resume.py) with optional `externalContentReferences`, and updated [ai-service/app/services/parser.py](ai-service/app/services/parser.py) so both mock and LiteLLM parsers now fetch best-effort HTML text from candidate GitHub / portfolio links and merge that text into the same parsing context as browser-side PDF previews.
+- Kept the current implementation intentionally narrow: it caps external sources to two links, truncates fetched text, records fetch warnings instead of failing the whole parse, and leaves GitHub-specific structured field extraction for the next Phase 3 slice.
+- Extended [ai-service/tests/test_consumer.py](ai-service/tests/test_consumer.py) to verify external context-aware mock summaries and LiteLLM request construction. Re-ran `tests/test_consumer.py` successfully with 8 passing tests.
+
+#### Next
+- Replace the current GitHub-as-generic-HTML strategy with a controlled minimal field extractor for README, description, and primary language so downstream prompts stay stable.
+- Decide whether external text should also feed the embedding pipeline directly, or remain parsing-only until Phase 4 score-breakdown work demands shared multimodal evidence.
+
+### Browser Payload-Aware Resume Parsing
+- Extended [ai-service/app/schemas/resume.py](ai-service/app/schemas/resume.py) so queue payloads can optionally carry browser-preprocessed PDF metadata, including paged preview images, text snippets, and render warnings from the frontend upload flow.
+- Updated [ai-service/app/services/parser.py](ai-service/app/services/parser.py) so the parser now prefers browser-side PDF context when available: mock parsing incorporates browser text summaries, and the LiteLLM request builder emits multi-modal user content with preview text plus page image URLs.
+- Fixed the current multimodal budget policy in [ai-service/app/services/parser.py](ai-service/app/services/parser.py) so parser context handling is aligned with the frontend upload cap of 3 preview pages, and the prompt text now records how many preview pages were actually attached.
+- Extended [ai-service/tests/test_consumer.py](ai-service/tests/test_consumer.py) to cover the richer queue payload and the multimodal request-construction path. Verified with `.venv/bin/python3 -m pytest tests/test_consumer.py -q` that all 6 targeted tests pass.
+
+#### Next
+- Decide later whether the default cap should remain 3 preview pages or become model-specific once larger samples and token budgets are measured.
+- When real external resume retrieval is added, keep browser-preprocessed payloads as the preferred source and use `rawContentReference` only as fallback context.
+
+## 2026-04-04
+
+### Config Hygiene - Local Env Split
+- Replaced tracked fallback secrets in [ai-service/app/config.py](ai-service/app/config.py) with placeholder-safe defaults for PostgreSQL password and internal callback key.
+- Added tracked template [ai-service/.env.example](ai-service/.env.example) and local ignored [ai-service/.env](ai-service/.env) so current machine-specific runtime values can stay available for local testing without leaking into the public repo.
+- Updated [ai-service/GUIDE.md](ai-service/GUIDE.md) to document the `.env.example` to `.env` workflow and remove real-looking local credential examples from public docs.
+
+#### Next
+- Decide whether the AI service should hard-fail startup when placeholder secrets are still present outside local development, instead of silently accepting them.
+- Align callback-key loading rules with backend deployment profiles so cross-service local/dev/prod behavior stays explicit.
+
 ## 2026-04-03
 
 ### Milestone 5 - Schema Alias Cleanup & Warning-Free Tests

@@ -1,0 +1,39 @@
+{
+  "sampleId": "C01",
+  "candidateName": "林泽远",
+  "purpose": "Phase 3 多模态最小闭环演示",
+  "resumeSources": {
+    "markdown": "../resumes/C01_林泽远.md",
+    "printableHtml": "../printable/C01_林泽远_resume_print.html",
+    "suggestedPdfName": "C01_林泽远.pdf"
+  },
+  "externalSources": {
+    "portfolioUrl": "http://127.0.0.1:8088/portfolio_C01_%E6%9E%97%E6%B3%BD%E8%BF%9C.html",
+    "githubUrl": "http://127.0.0.1:8088/github_C01_linzeyuan-example.html"
+  },
+  "expectedExternalExtraction": {
+    "portfolio": {
+      "title": "林泽远 | 后端工程作品集",
+      "keywords": [
+        "Kotlin",
+        "Spring Boot",
+        "PostgreSQL",
+        "Redis",
+        "招聘平台",
+        "异步解析"
+      ]
+    },
+    "github": {
+      "repo": "linzeyuan-example/smart-ats-backend-lab",
+      "description": "Backend lab for Smart ATS workflows, covering async resume parsing, recommendation APIs, and recruiter review state management.",
+      "languages": ["Kotlin", "TypeScript", "HTML", "Dockerfile", "SQL"],
+      "signals": ["Updated 2 days ago", "Stars 42", "Forks 9", "Issues 5", "Pull requests 3", "Last commit 1 day ago"]
+    }
+  },
+  "walkthrough": [
+    "本地托管 multimodal 目录并填写 Candidate profile 中的 githubUrl 与 portfolioUrl",
+    "打开 printable 简历 HTML 并导出 PDF",
+    "Candidate 资料页上传 PDF，展示浏览器端 Wasm 渲染与分页预览",
+    "等待解析完成后，进入推荐和岗位详情页验证统一画像是否已产生"
+  ]
+}

@@ -1,0 +1,306 @@
+{
+  "generatedAt": "2026-04-16T15:12:15+00:00",
+  "baseUrl": "http://127.0.0.1:18080",
+  "overview": {
+    "totals": {
+      "totalUsers": 13,
+      "totalJobs": 7,
+      "totalResumes": 10,
+      "totalSkillEntries": 32
+    },
+    "usersByRole": [
+      {
+        "label": "HR",
+        "value": 1
+      },
+      {
+        "label": "CANDIDATE",
+        "value": 11
+      },
+      {
+        "label": "ADMIN",
+        "value": 1
+      }
+    ],
+    "resumesByStatus": [
+      {
+        "label": "PENDING_PARSE",
+        "value": 0
+      },
+      {
+        "label": "PARSING",
+        "value": 0
+      },
+      {
+        "label": "PARSED",
+        "value": 10
+      },
+      {
+        "label": "PARSE_FAILED",
+        "value": 0
+      }
+    ],
+    "latestParseFailures": []
+  },
+  "skillCount": 32,
+  "jobCount": 7,
+  "resumeCount": 10,
+  "datasetScopedSummary": {
+    "jobCount": 6,
+    "candidateCount": 8,
+    "resumeCount": 8,
+    "parsedResumeCount": 8
+  },
+  "candidateRanking": {
+    "sampleCount": 8,
+    "top1Hits": 8,
+    "top3Hits": 8,
+    "top1HitRate": 1.0,
+    "top3HitRate": 1.0
+  },
+  "candidateEvidence": [
+    {
+      "sampleId": "C01",
+      "candidateName": "林泽远",
+      "expectedTopJobs": [
+        "J01",
+        "J06"
+      ],
+      "predictedTop3Jobs": [
+        "J01",
+        "J05"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C02",
+      "candidateName": "周清禾",
+      "expectedTopJobs": [
+        "J02",
+        "J06"
+      ],
+      "predictedTop3Jobs": [
+        "J02",
+        "J06"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C03",
+      "candidateName": "许逸晨",
+      "expectedTopJobs": [
+        "J03"
+      ],
+      "predictedTop3Jobs": [
+        "J03",
+        "J04",
+        "J05"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C04",
+      "candidateName": "何沐言",
+      "expectedTopJobs": [
+        "J04"
+      ],
+      "predictedTop3Jobs": [
+        "J04",
+        "J03",
+        "J06"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C05",
+      "candidateName": "宋嘉锐",
+      "expectedTopJobs": [
+        "J06",
+        "J02"
+      ],
+      "predictedTop3Jobs": [
+        "J06",
+        "J02",
+        "J04"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C06",
+      "candidateName": "唐书宁",
+      "expectedTopJobs": [
+        "J05",
+        "J01"
+      ],
+      "predictedTop3Jobs": [
+        "J05",
+        "J03",
+        "J01"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C07",
+      "candidateName": "顾安然",
+      "expectedTopJobs": [
+        "J04"
+      ],
+      "predictedTop3Jobs": [
+        "J04",
+        "J05"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    },
+    {
+      "sampleId": "C08",
+      "candidateName": "乔昀汀",
+      "expectedTopJobs": [
+        "J01",
+        "J06"
+      ],
+      "predictedTop3Jobs": [
+        "J01",
+        "J05"
+      ],
+      "evaluatedCount": 7,
+      "top1Hit": true,
+      "top3Hit": true
+    }
+  ],
+  "hrRecommendations": [
+    {
+      "jobId": "J06",
+      "title": "Fullstack Engineer",
+      "recommendationCount": 9,
+      "datasetRecommendationCount": 8,
+      "topCandidates": [
+        {
+          "name": "宋嘉锐",
+          "score": 69.48
+        },
+        {
+          "name": "周清禾",
+          "score": 43.63
+        },
+        {
+          "name": "何沐言",
+          "score": 35.96
+        }
+      ]
+    },
+    {
+      "jobId": "J05",
+      "title": "DevOps Engineer",
+      "recommendationCount": 9,
+      "datasetRecommendationCount": 8,
+      "topCandidates": [
+        {
+          "name": "唐书宁",
+          "score": 72.03
+        },
+        {
+          "name": "许逸晨",
+          "score": 39.95
+        },
+        {
+          "name": "林泽远",
+          "score": 34.93
+        }
+      ]
+    },
+    {
+      "jobId": "J04",
+      "title": "Data Analyst",
+      "recommendationCount": 9,
+      "datasetRecommendationCount": 8,
+      "topCandidates": [
+        {
+          "name": "何沐言",
+          "score": 67.72
+        },
+        {
+          "name": "许逸晨",
+          "score": 45.45
+        },
+        {
+          "name": "宋嘉锐",
+          "score": 33.34
+        }
+      ]
+    },
+    {
+      "jobId": "J03",
+      "title": "QA Automation Engineer",
+      "recommendationCount": 9,
+      "datasetRecommendationCount": 8,
+      "topCandidates": [
+        {
+          "name": "许逸晨",
+          "score": 72.99
+        },
+        {
+          "name": "何沐言",
+          "score": 38.8
+        },
+        {
+          "name": "唐书宁",
+          "score": 33.89
+        }
+      ]
+    },
+    {
+      "jobId": "J02",
+      "title": "Vue Frontend Engineer",
+      "recommendationCount": 9,
+      "datasetRecommendationCount": 8,
+      "topCandidates": [
+        {
+          "name": "周清禾",
+          "score": 67.76
+        },
+        {
+          "name": "宋嘉锐",
+          "score": 42.74
+        },
+        {
+          "name": "何沐言",
+          "score": 24.17
+        }
+      ]
+    },
+    {
+      "jobId": "J01",
+      "title": "Kotlin Backend Engineer",
+      "recommendationCount": 9,
+      "datasetRecommendationCount": 8,
+      "topCandidates": [
+        {
+          "name": "林泽远",
+          "score": 70.36
+        },
+        {
+          "name": "乔昀汀",
+          "score": 55.02
+        },
+        {
+          "name": "唐书宁",
+          "score": 31.21
+        }
+      ]
+    }
+  ]
+}

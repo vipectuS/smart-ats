@@ -5,9 +5,12 @@ import com.smartats.backend.dto.PageResponse
 import com.smartats.backend.dto.candidate.CandidateJobActionResponse
 import com.smartats.backend.dto.job.CreateJobRequest
 import com.smartats.backend.dto.job.EvaluationRequestWeightsDTO
+import com.smartats.backend.dto.job.JobApplicationReviewItemResponse
 import com.smartats.backend.dto.job.JobEvaluationResponse
 import com.smartats.backend.dto.job.JobRecommendationResponse
 import com.smartats.backend.dto.job.JobResponse
+import com.smartats.backend.dto.job.UpdateJobApplicationReviewRequest
+import com.smartats.backend.dto.job.UpdateJobRequest
 import com.smartats.backend.service.CandidateJobActionService
 import com.smartats.backend.service.JobService
 import com.smartats.backend.service.RecommendationService
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.PutMapping
 import java.security.Principal
 import java.util.UUID
 
@@ -45,6 +49,17 @@ class JobController(
             .body(ApiResponse(status = HttpStatus.CREATED.value(), data = response, message = "Job created"))
     }
 
+    @PutMapping("/{jobId}")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    fun updateJob(
+        @PathVariable jobId: UUID,
+        principal: Principal,
+        @Valid @RequestBody request: UpdateJobRequest,
+    ): ApiResponse<JobResponse> {
+        val response = jobService.updateJob(principal.name, jobId, request)
+        return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Job updated")
+    }
+
     @GetMapping
     fun listJobs(
         @RequestParam(defaultValue = "0") page: Int,
@@ -58,6 +73,28 @@ class JobController(
     fun getJob(@PathVariable jobId: UUID): ApiResponse<JobResponse> {
         val response = jobService.getJob(jobId)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
+    }
+
+    @GetMapping("/{jobId}/applications")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    fun listJobApplications(
+        @PathVariable jobId: UUID,
+        principal: Principal,
+    ): ApiResponse<List<JobApplicationReviewItemResponse>> {
+        val response = jobService.listActiveApplications(principal.name, jobId)
+        return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
+    }
+
+    @PutMapping("/{jobId}/applications/{applicationId}")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    fun reviewJobApplication(
+        @PathVariable jobId: UUID,
+        @PathVariable applicationId: UUID,
+        principal: Principal,
+        @Valid @RequestBody request: UpdateJobApplicationReviewRequest,
+    ): ApiResponse<JobApplicationReviewItemResponse> {
+        val response = jobService.reviewApplication(principal.name, jobId, applicationId, request)
+        return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Application review updated")
     }
 
     @GetMapping("/{jobId}/recommendations")

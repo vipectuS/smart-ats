@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hyzyla/pdfium": "^2.1.12",
     "axios": "^1.13.6",
     "echarts": "^6.0.0",
     "pinia": "^3.0.4",

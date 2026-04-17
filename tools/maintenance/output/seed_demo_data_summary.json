@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-04-16T15:09:21+00:00",
+  "baseUrl": "http://127.0.0.1:18080",
+  "summary": {
+    "hr_users_reused": 1,
+    "jobs_reused": 6,
+    "skills_reused": 32,
+    "candidate_users_reused": 8,
+    "resumes_reused": 8,
+    "resume_status_parsed": 8,
+    "applications_reused": 8,
+    "jobs_evaluated": 6
+  },
+  "jobMapping": {
+    "J01": "3eb801a0-f3ec-4665-b9e4-9cd3c9615e06",
+    "J02": "b0edaa0a-43bb-4a73-9c13-acebd38499be",
+    "J03": "3c8d0216-6867-49f3-9dde-68bb0701175f",
+    "J04": "52214d59-e66a-4f64-8128-c0ab626e8936",
+    "J05": "4546d531-ddf7-4833-984f-c8718b8ef293",
+    "J06": "fde51b07-27d8-4fb0-8718-ec24f3c42cc2"
+  },
+  "candidates": [
+    {
+      "sampleId": "C01",
+      "username": "demo_c01",
+      "email": "demo_c01@smartats.local",
+      "resumeId": "ccb33a6a-b904-493d-a0f4-7ca53e3272f3",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C02",
+      "username": "demo_c02",
+      "email": "demo_c02@smartats.local",
+      "resumeId": "2dd8a797-f10b-4ec6-8dbc-1526c9b24fb5",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C03",
+      "username": "demo_c03",
+      "email": "demo_c03@smartats.local",
+      "resumeId": "ba17324e-b8f0-40b0-bad7-24be06544549",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C04",
+      "username": "demo_c04",
+      "email": "demo_c04@smartats.local",
+      "resumeId": "09e6811e-1b0e-4de1-a97c-43d9c67dcc13",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C05",
+      "username": "demo_c05",
+      "email": "demo_c05@smartats.local",
+      "resumeId": "760ef3e5-e4dc-4db7-81c6-4f21ce9c38a7",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C06",
+      "username": "demo_c06",
+      "email": "demo_c06@smartats.local",
+      "resumeId": "6ba3a5c7-c139-4dfc-93a9-612a8c10ee5e",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C07",
+      "username": "demo_c07",
+      "email": "demo_c07@smartats.local",
+      "resumeId": "045ab7bd-0238-4887-8302-def8d65bf06e",
+      "resumeStatus": "PARSED"
+    },
+    {
+      "sampleId": "C08",
+      "username": "demo_c08",
+      "email": "demo_c08@smartats.local",
+      "resumeId": "ce426c06-9044-477c-97db-743b8635bfad",
+      "resumeStatus": "PARSED"
+    }
+  ]
+}

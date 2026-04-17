@@ -6,6 +6,7 @@ import com.smartats.backend.domain.Job
 import com.smartats.backend.domain.Resume
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
+import com.smartats.backend.repository.JobApplicationRepository
 import com.smartats.backend.dto.auth.LoginRequest
 import com.smartats.backend.repository.JobRecommendationRepository
 import com.smartats.backend.repository.JobRepository
@@ -22,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -47,6 +49,9 @@ class JobControllerTest {
 
     @Autowired
     private lateinit var jobRecommendationRepository: JobRecommendationRepository
+
+    @Autowired
+    private lateinit var jobApplicationRepository: JobApplicationRepository
 
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
@@ -131,6 +136,253 @@ class JobControllerTest {
     }
 
     @Test
+    fun `update job persists modified requirements and fields`() {
+        val accessToken = obtainAccessToken("editor_hr", "editor_hr@example.com")
+
+        val createResult = mockMvc.perform(
+            post("/api/jobs")
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "title" to "Frontend Engineer",
+                            "description" to "Build dashboard interfaces",
+                            "requirements" to mapOf(
+                                "skills" to listOf("Vue", "TypeScript"),
+                                "location" to "Shanghai",
+                            ),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+
+        val jobId = extractId(createResult.response.contentAsString)
+
+        mockMvc.perform(
+            put("/api/jobs/{jobId}", jobId)
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "title" to "Senior Frontend Engineer",
+                            "description" to "Lead dashboard and workflow experience improvements",
+                            "requirements" to mapOf(
+                                "skills" to listOf("Vue", "TypeScript", "ECharts"),
+                                "location" to "Hangzhou",
+                                "headcount" to 2,
+                            ),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.message").value("Job updated"))
+            .andExpect(jsonPath("$.data.title").value("Senior Frontend Engineer"))
+            .andExpect(jsonPath("$.data.requirements.skills[2]").value("ECharts"))
+            .andExpect(jsonPath("$.data.requirements.location").value("Hangzhou"))
+            .andExpect(jsonPath("$.data.requirements.headcount").value(2))
+
+        mockMvc.perform(
+            get("/api/jobs/{jobId}", jobId)
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.title").value("Senior Frontend Engineer"))
+            .andExpect(jsonPath("$.data.description").value("Lead dashboard and workflow experience improvements"))
+    }
+
+    @Test
+    fun `update job rejects hr who is not creator`() {
+        val ownerToken = obtainAccessToken("job_author", "job_author@example.com")
+        val otherHrToken = obtainAccessToken("other_hr", "other_hr@example.com")
+
+        val createResult = mockMvc.perform(
+            post("/api/jobs")
+                .header("Authorization", "Bearer $ownerToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "title" to "Platform Engineer",
+                            "description" to "Maintain ATS platform",
+                            "requirements" to mapOf("skills" to listOf("Kotlin", "PostgreSQL")),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+
+        val jobId = extractId(createResult.response.contentAsString)
+
+        mockMvc.perform(
+            put("/api/jobs/{jobId}", jobId)
+                .header("Authorization", "Bearer $otherHrToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "title" to "Unauthorized Update",
+                            "description" to "Should not succeed",
+                            "requirements" to mapOf("skills" to listOf("Forbidden")),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.message").value("Only the job creator or an admin can update this job"))
+    }
+
+    @Test
+    fun `list job applications returns active applicants with latest resume summary`() {
+        val hrToken = obtainAccessToken("review_hr", "review_hr@example.com")
+        val candidateToken = obtainAccessToken("active_candidate", "active_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("active_candidate").orElseThrow()
+        val owner = userRepository.findByUsername("review_hr").orElseThrow()
+
+        val job = jobRepository.save(
+            Job(
+                title = "Applied Role",
+                description = "Review live job applications",
+                requirements = mapOf("skills" to listOf("Kotlin", "Vue")),
+                createdBy = owner,
+            ),
+        )
+
+        val resume = resumeRepository.save(
+            Resume(
+                candidateName = "Active Candidate",
+                contactInfo = "active_candidate@example.com",
+                rawContentReference = "s3://resumes/active-candidate.pdf",
+                parsedData = mapOf(
+                    "basicInfo" to mapOf(
+                        "fullName" to "Active Candidate",
+                        "email" to "active_candidate@example.com",
+                    ),
+                ),
+                ownerUser = candidate,
+                status = "PARSED",
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/apply", job.id)
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isCreated)
+
+        mockMvc.perform(
+            get("/api/jobs/{jobId}/applications", job.id)
+                .header("Authorization", "Bearer $hrToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].status").value("APPLIED"))
+            .andExpect(jsonPath("$.data[0].candidate.username").value("active_candidate"))
+            .andExpect(jsonPath("$.data[0].candidate.displayName").value("Active Candidate"))
+            .andExpect(jsonPath("$.data[0].latestResume.resumeId").value(requireNotNull(resume.id).toString()))
+            .andExpect(jsonPath("$.data[0].latestResume.status").value("PARSED"))
+    }
+
+    @Test
+    fun `list job applications rejects hr who is not creator`() {
+        val ownerToken = obtainAccessToken("creator_hr", "creator_hr@example.com")
+        val otherHrToken = obtainAccessToken("viewer_hr", "viewer_hr@example.com")
+
+        val createResult = mockMvc.perform(
+            post("/api/jobs")
+                .header("Authorization", "Bearer $ownerToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "title" to "Restricted Job",
+                            "description" to "Only creator can review applications",
+                            "requirements" to mapOf("skills" to listOf("Security")),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+
+        val jobId = extractId(createResult.response.contentAsString)
+
+        mockMvc.perform(
+            get("/api/jobs/{jobId}/applications", jobId)
+                .header("Authorization", "Bearer $otherHrToken"),
+        )
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.message").value("Only the job creator or an admin can review applications for this job"))
+    }
+
+    @Test
+    fun `review job application updates interview status and note`() {
+        val hrToken = obtainAccessToken("workflow_hr", "workflow_hr@example.com")
+        val candidateToken = obtainAccessToken("workflow_candidate", "workflow_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("workflow_candidate").orElseThrow()
+        val owner = userRepository.findByUsername("workflow_hr").orElseThrow()
+
+        val job = jobRepository.save(
+            Job(
+                title = "Workflow Role",
+                description = "HR review workflow role",
+                requirements = mapOf("skills" to listOf("Kotlin")),
+                createdBy = owner,
+            ),
+        )
+
+        resumeRepository.save(
+            Resume(
+                candidateName = "Workflow Candidate",
+                contactInfo = "workflow_candidate@example.com",
+                rawContentReference = "s3://resumes/workflow-candidate.pdf",
+                ownerUser = candidate,
+                status = "PARSED",
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/apply", job.id)
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isCreated)
+
+        val application = jobApplicationRepository.findByUserIdAndJobId(requireNotNull(candidate.id), requireNotNull(job.id))
+            ?: throw IllegalStateException("Application should exist after apply")
+
+        mockMvc.perform(
+            put("/api/jobs/{jobId}/applications/{applicationId}", job.id, requireNotNull(application.id))
+                .header("Authorization", "Bearer $hrToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "status" to "INTERVIEW",
+                            "reviewNote" to "已安排下周技术面，重点追问分布式缓存经验。",
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.message").value("Application review updated"))
+            .andExpect(jsonPath("$.data.status").value("INTERVIEW"))
+            .andExpect(jsonPath("$.data.reviewNote").value("已安排下周技术面，重点追问分布式缓存经验。"))
+
+        mockMvc.perform(
+            get("/api/jobs/{jobId}/applications", job.id)
+                .header("Authorization", "Bearer $hrToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data[0].status").value("INTERVIEW"))
+            .andExpect(jsonPath("$.data[0].reviewNote").value("已安排下周技术面，重点追问分布式缓存经验。"))
+    }
+
+    @Test
     fun `evaluate job generates recommendations and persists them`() {
         val accessToken = obtainAccessToken("matcher", "matcher@example.com")
         val owner = userRepository.findByUsername("matcher").orElseThrow()
@@ -187,6 +439,45 @@ class JobControllerTest {
 
         val persisted = jobRecommendationRepository.findByJobId(requireNotNull(job.id))
         org.junit.jupiter.api.Assertions.assertEquals(2, persisted.size)
+    }
+
+    @Test
+    fun `evaluate job can be repeated without recommendation uniqueness conflicts`() {
+        val accessToken = obtainAccessToken("repeat_eval", "repeat_eval@example.com")
+        val owner = userRepository.findByUsername("repeat_eval").orElseThrow()
+
+        val job = jobRepository.save(
+            Job(
+                title = "Repeatable Evaluation Engineer",
+                description = "Re-run recommendation batches safely",
+                requirements = mapOf("skills" to listOf("Kotlin", "Redis")),
+                createdBy = owner,
+            ),
+        )
+
+        createParsedResume(
+            fullName = "Repeat Candidate",
+            email = "repeat_candidate@example.com",
+            skills = listOf("Kotlin", "Redis"),
+            summary = "Re-evaluates hiring batches cleanly",
+            radarBase = 8,
+        )
+
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/evaluate", job.id)
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/evaluate", job.id)
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.evaluatedCount").value(1))
+
+        val persisted = jobRecommendationRepository.findByJobId(requireNotNull(job.id))
+        org.junit.jupiter.api.Assertions.assertEquals(1, persisted.size)
     }
 
     @Test
@@ -310,13 +601,13 @@ class JobControllerTest {
             .andExpect(jsonPath("$.data[0].candidate.radarScores.problemSolving").value(8))
     }
 
-    private fun obtainAccessToken(username: String, email: String): String {
+    private fun obtainAccessToken(username: String, email: String, role: UserRole = UserRole.HR): String {
         userRepository.save(
             User(
                 username = username,
                 passwordHash = passwordEncoder.encode("Password123"),
                 email = email,
-                role = UserRole.HR,
+                role = role,
             ),
         )
 

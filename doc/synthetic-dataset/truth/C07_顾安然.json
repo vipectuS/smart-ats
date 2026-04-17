@@ -1,0 +1,38 @@
+{
+  "candidateName": "顾安然",
+  "email": "guanran@example.com",
+  "phone": "13800009017",
+  "summary": "1.5 年运营支持经验，擅长内容整理、跨团队沟通、周报输出和流程跟进。对招聘数据和系统页面有理解，但缺乏工程开发、自动化测试和基础设施经验，适合作为低匹配反例样本。",
+  "skills": [
+    "Content Planning",
+    "Reporting",
+    "Coordination",
+    "Excel",
+    "Documentation",
+    "Process Tracking",
+    "Presentation"
+  ],
+  "workExperiences": [
+    {
+      "company": "栖原内容服务有限公司",
+      "title": "运营专员",
+      "startDate": "2023.07",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "霁川传媒工作室",
+      "title": "运营实习生",
+      "startDate": "2022.05",
+      "endDate": "2023.06"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构临川大学",
+      "degree": "本科",
+      "fieldOfStudy": "工商管理",
+      "startDate": "2019.09",
+      "endDate": "2023.06"
+    }
+  ]
+}

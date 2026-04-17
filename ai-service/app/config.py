@@ -25,22 +25,21 @@ class Settings(BaseSettings):
         default="X-Internal-Api-Key",
         alias="INTERNAL_CALLBACK_HEADER_NAME",
     )
-    internal_callback_api_key: str = Field(
-        default="smart-ats-internal-callback-key",
-        alias="INTERNAL_CALLBACK_API_KEY",
-    )
+    internal_callback_api_key: str = Field(default="change-me-internal-callback-key", alias="INTERNAL_CALLBACK_API_KEY")
     backend_callback_timeout_seconds: float = Field(default=10.0, alias="BACKEND_CALLBACK_TIMEOUT_SECONDS")
     postgres_host: str = Field(default="127.0.0.1", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
     postgres_db: str = Field(default="smart_ats", alias="POSTGRES_DB")
     postgres_user: str = Field(default="postgres", alias="POSTGRES_USER")
-    postgres_password: str = Field(default="talamh", alias="POSTGRES_PASSWORD")
+    postgres_password: str = Field(default="change-me-postgres-password", alias="POSTGRES_PASSWORD")
+
     litellm_model: str = Field(default="gpt-4o-mini", alias="LITELLM_MODEL")
     job_fit_report_model: str = Field(default="gpt-4o-mini", alias="JOB_FIT_REPORT_MODEL")
     resume_parser_provider: str = Field(default="mock", alias="RESUME_PARSER_PROVIDER")
     embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
     embedding_dimensions: int = Field(default=1536, alias="EMBEDDING_DIMENSIONS")
     external_content_timeout_seconds: float = Field(default=10.0, alias="EXTERNAL_CONTENT_TIMEOUT_SECONDS")
+    synthetic_dataset_dir: str = Field(default="../doc/synthetic-dataset", alias="SYNTHETIC_DATASET_DIR")
 
     @property
     def redis_url(self) -> str:

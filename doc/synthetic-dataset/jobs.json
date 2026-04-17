@@ -1,0 +1,86 @@
+[
+  {
+    "jobId": "J01",
+    "title": "Kotlin Backend Engineer",
+    "department": "Platform Engineering",
+    "location": "Shanghai",
+    "headcount": 2,
+    "description": "负责招聘系统后端服务开发，参与岗位、简历、推荐链路的接口设计与性能优化。",
+    "requirements": {
+      "skills": ["Kotlin", "Spring Boot", "PostgreSQL", "Docker", "Redis"],
+      "experienceYears": 2,
+      "education": "Bachelor",
+      "keywords": ["backend", "api", "microservice", "queue", "database"]
+    }
+  },
+  {
+    "jobId": "J02",
+    "title": "Vue Frontend Engineer",
+    "department": "Product Engineering",
+    "location": "Hangzhou",
+    "headcount": 1,
+    "description": "负责招聘平台前端页面开发与交互体验优化，参与仪表盘、职位详情和候选人旅程设计。",
+    "requirements": {
+      "skills": ["Vue", "TypeScript", "Vite", "ECharts", "CSS"],
+      "experienceYears": 2,
+      "education": "Bachelor",
+      "keywords": ["frontend", "dashboard", "interaction", "data-visualization"]
+    }
+  },
+  {
+    "jobId": "J03",
+    "title": "QA Automation Engineer",
+    "department": "Quality Assurance",
+    "location": "Nanjing",
+    "headcount": 1,
+    "description": "建设自动化测试体系，覆盖接口测试、回归测试、性能基线和发布前质量门禁。",
+    "requirements": {
+      "skills": ["Python", "Selenium", "API Testing", "Pytest", "CI/CD"],
+      "experienceYears": 2,
+      "education": "Bachelor",
+      "keywords": ["automation", "testing", "regression", "quality"]
+    }
+  },
+  {
+    "jobId": "J04",
+    "title": "Data Analyst",
+    "department": "Business Intelligence",
+    "location": "Shanghai",
+    "headcount": 1,
+    "description": "围绕招聘漏斗、转化率和人才画像建立分析报表，支持策略优化与业务复盘。",
+    "requirements": {
+      "skills": ["SQL", "Python", "Pandas", "Data Visualization", "A/B Testing"],
+      "experienceYears": 1,
+      "education": "Bachelor",
+      "keywords": ["analysis", "metric", "dashboard", "reporting"]
+    }
+  },
+  {
+    "jobId": "J05",
+    "title": "DevOps Engineer",
+    "department": "Infrastructure",
+    "location": "Suzhou",
+    "headcount": 1,
+    "description": "负责 CI/CD、容器化部署、监控告警与研发环境稳定性建设。",
+    "requirements": {
+      "skills": ["Linux", "Docker", "Kubernetes", "CI/CD", "Monitoring"],
+      "experienceYears": 2,
+      "education": "Bachelor",
+      "keywords": ["deployment", "container", "ops", "monitoring"]
+    }
+  },
+  {
+    "jobId": "J06",
+    "title": "Fullstack Engineer",
+    "department": "Core Product",
+    "location": "Hangzhou",
+    "headcount": 2,
+    "description": "同时参与前后端功能交付，负责小型产品模块从需求实现到上线的完整闭环。",
+    "requirements": {
+      "skills": ["JavaScript", "TypeScript", "Vue", "Node.js", "SQL"],
+      "experienceYears": 2,
+      "education": "Bachelor",
+      "keywords": ["fullstack", "delivery", "product", "frontend", "backend"]
+    }
+  }
+]

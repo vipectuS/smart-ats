@@ -143,9 +143,9 @@ class CandidateJobActionService(
     fun listApplications(username: String): List<CandidateJobActionListItemResponse> {
         val user = getCandidateUser(username)
         val userId = requireNotNull(user.id)
-        return jobApplicationRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(userId, JobApplicationStatus.APPLIED)
+        return jobApplicationRepository.findByUserIdAndStatusNotOrderByUpdatedAtDesc(userId, JobApplicationStatus.WITHDRAWN)
             .map { action ->
-                action.job.toCandidateActionListItem(JobApplicationStatus.APPLIED.name, action.createdAt, getActionState(userId, requireNotNull(action.job.id)))
+                action.job.toCandidateActionListItem(action.status.name, action.createdAt, action.updatedAt, getActionState(userId, requireNotNull(action.job.id)))
             }
     }
 
@@ -155,7 +155,7 @@ class CandidateJobActionService(
         val userId = requireNotNull(user.id)
         return jobFavoriteRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(userId, JobFavoriteStatus.FAVORITED)
             .map { action ->
-                action.job.toCandidateActionListItem(JobFavoriteStatus.FAVORITED.name, action.createdAt, getActionState(userId, requireNotNull(action.job.id)))
+                action.job.toCandidateActionListItem(JobFavoriteStatus.FAVORITED.name, action.createdAt, action.updatedAt, getActionState(userId, requireNotNull(action.job.id)))
             }
     }
 
@@ -165,7 +165,7 @@ class CandidateJobActionService(
         val userId = requireNotNull(user.id)
         return jobIgnoreRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(userId, JobIgnoreStatus.IGNORED)
             .map { action ->
-                action.job.toCandidateActionListItem(JobIgnoreStatus.IGNORED.name, action.createdAt, getActionState(userId, requireNotNull(action.job.id)))
+                action.job.toCandidateActionListItem(JobIgnoreStatus.IGNORED.name, action.createdAt, action.updatedAt, getActionState(userId, requireNotNull(action.job.id)))
             }
     }
 
@@ -208,10 +208,14 @@ class CandidateJobActionService(
 
     @Transactional(readOnly = true)
     fun getActionState(userId: UUID, jobId: UUID): JobActionStateResponse {
+        val application = jobApplicationRepository.findByUserIdAndJobId(userId, jobId)
+        val applicationStatus = application?.status?.name
+        val isActiveApplication = application != null && application.status != JobApplicationStatus.WITHDRAWN
         return JobActionStateResponse(
-            applied = jobApplicationRepository.existsByUserIdAndJobIdAndStatus(userId, jobId, JobApplicationStatus.APPLIED),
+            applied = isActiveApplication,
             favorited = jobFavoriteRepository.existsByUserIdAndJobIdAndStatus(userId, jobId, JobFavoriteStatus.FAVORITED),
             ignored = jobIgnoreRepository.existsByUserIdAndJobIdAndStatus(userId, jobId, JobIgnoreStatus.IGNORED),
+            applicationStatus = applicationStatus,
         )
     }
 
@@ -238,6 +242,8 @@ class CandidateJobActionService(
     private fun JobApplicationStatus.toTimelineAction(): CandidateTimelineAction {
         return when (this) {
             JobApplicationStatus.APPLIED -> CandidateTimelineAction.APPLIED
+            JobApplicationStatus.INTERVIEW -> CandidateTimelineAction.INTERVIEW
+            JobApplicationStatus.REJECTED -> CandidateTimelineAction.REJECTED
             JobApplicationStatus.WITHDRAWN -> CandidateTimelineAction.WITHDRAWN
         }
     }

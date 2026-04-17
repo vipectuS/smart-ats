@@ -14,9 +14,12 @@ build.log
 frontend/node_modules/
 frontend/dist/
 frontend/build.log
+frontend/.env.local
+tools/runtime-capture/node_modules/
 
 # Backend
 backend/target/
+backend/local/backend-local.yml
 
 # AI service
 ai-service/.venv/
@@ -24,3 +27,5 @@ ai-service/.pytest_cache/
 ai-service/__pycache__/
 ai-service/app/__pycache__/
 ai-service/tests/__pycache__/
+ai-service/.env
+

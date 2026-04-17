@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>林泽远 | 后端工程作品集</title>
+    <meta
+      name="description"
+      content="林泽远的后端工程作品集，包含招聘平台、异步解析、推荐链路和 PostgreSQL 优化案例。"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #5d6780;
+        --line: #d7dfeb;
+        --brand: #0f62fe;
+        --brand-soft: #eef4ff;
+        --panel: #ffffff;
+        --bg: linear-gradient(180deg, #f5f8fc 0%, #ebf1f8 100%);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        line-height: 1.7;
+      }
+      .page {
+        width: min(1040px, calc(100vw - 32px));
+        margin: 32px auto 64px;
+      }
+      .hero,
+      .panel {
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(215, 223, 235, 0.9);
+        border-radius: 24px;
+        box-shadow: 0 18px 50px rgba(47, 74, 115, 0.08);
+      }
+      .hero {
+        padding: 32px;
+        display: grid;
+        grid-template-columns: 1.3fr 0.7fr;
+        gap: 24px;
+      }
+      .hero h1 { margin: 0; font-size: 40px; line-height: 1.1; }
+      .hero p { margin: 0; color: var(--muted); }
+      .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+      .tag {
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .metrics {
+        display: grid;
+        gap: 12px;
+      }
+      .metric {
+        padding: 16px;
+        border-radius: 18px;
+        background: #f8fbff;
+        border: 1px solid var(--line);
+      }
+      .metric strong { display: block; font-size: 26px; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        margin-top: 24px;
+      }
+      .panel { padding: 28px; }
+      .panel h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+      }
+      .project {
+        padding: 18px 0;
+        border-top: 1px solid var(--line);
+      }
+      .project:first-of-type { border-top: 0; padding-top: 0; }
+      .project h3 { margin: 0 0 6px; font-size: 18px; }
+      ul { margin: 10px 0 0 18px; padding: 0; }
+      .contact a { color: var(--brand); text-decoration: none; }
+      @media (max-width: 860px) {
+        .hero, .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <p>Backend Portfolio</p>
+          <h1>林泽远</h1>
+          <p>
+            2 年后端开发经验，长期参与招聘和协同类系统开发，聚焦 Kotlin、Spring Boot、PostgreSQL、Redis
+            与异步队列解耦。擅长把复杂状态流转和推荐链路做成稳定、可回归、可演示的业务路径。
+          </p>
+          <div class="tag-row">
+            <span class="tag">Kotlin</span>
+            <span class="tag">Spring Boot</span>
+            <span class="tag">PostgreSQL</span>
+            <span class="tag">Redis</span>
+            <span class="tag">Docker</span>
+            <span class="tag">Async Workflow</span>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><strong>3</strong><span>核心招聘项目案例</span></div>
+          <div class="metric"><strong>2 年</strong><span>后端交付经验</span></div>
+          <div class="metric"><strong>1</strong><span>完整异步解析链路落地</span></div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>代表项目</h2>
+          <div class="project">
+            <h3>智能招聘辅助平台后端改造</h3>
+            <p>
+              使用 Kotlin 与 Spring Boot 重构候选人资料、岗位推荐和投递状态链路，为推荐服务增加缓存与异步状态管理。
+            </p>
+            <ul>
+              <li>完成岗位申请、收藏、忽略三类动作的服务层抽象。</li>
+              <li>对接 HR 权重调节与推荐解释输出，保证前后端联调稳定。</li>
+              <li>把推荐结果和时间线状态收口到统一响应结构。</li>
+            </ul>
+          </div>
+          <div class="project">
+            <h3>简历解析状态追踪模块</h3>
+            <p>
+              设计 PENDING_PARSE、PARSING、PARSED、PARSE_FAILED 四态流转，并接入 Redis 队列与 AI 回调。
+            </p>
+            <ul>
+              <li>支持失败回调、重试和状态轮询。</li>
+              <li>为 HR 简历库和 Candidate 资料页提供统一状态查询依据。</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>技术亮点</h2>
+          <ul>
+            <li>熟悉 PostgreSQL 查询优化与索引设计。</li>
+            <li>可独立处理 API 契约、DTO 约束和权限边界。</li>
+            <li>有 Redis 消息队列接入和回调恢复经验。</li>
+            <li>对推荐链路、结构化画像和回归测试覆盖有实际落地经验。</li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <h2>工作经历摘要</h2>
+          <div class="project">
+            <h3>云栈软件科技有限公司 | 后端开发工程师</h3>
+            <p>2023.07 - 2025.03</p>
+            <p>负责招聘管理系统中的岗位、候选人、投递记录接口开发，参与推荐结果展示接口和状态联动。</p>
+          </div>
+          <div class="project">
+            <h3>北桥信息工作室 | Java 开发实习生</h3>
+            <p>2022.03 - 2023.06</p>
+            <p>参与内部审批系统开发，维护用户、角色和日志模块，并编写接口联调文档。</p>
+          </div>
+        </article>
+
+        <article class="panel contact">
+          <h2>联系与延伸</h2>
+          <p>邮箱: <a href="mailto:linzeyuan@example.com">linzeyuan@example.com</a></p>
+          <p>GitHub: <a href="https://github.com/linzeyuan-example">github.com/linzeyuan-example</a></p>
+          <p>城市: 上海</p>
+          <p>当前页面用于本地 Phase 3 多模态演示，重点验证作品集 HTML 能否与 PDF 简历、GitHub 仓库页面一起进入统一画像。</p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

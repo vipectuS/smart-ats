@@ -1,0 +1,39 @@
+{
+  "candidateName": "唐书宁",
+  "email": "tangshuning@example.com",
+  "phone": "13800006786",
+  "summary": "2 年基础设施与运维平台经验，熟悉 Linux、Docker、CI/CD、日志监控和发布流程管理。擅长把开发交付链路标准化，对应用代码开发涉猎较少，但对部署与稳定性治理经验较强。",
+  "skills": [
+    "Linux",
+    "Docker",
+    "Kubernetes",
+    "GitLab CI",
+    "Jenkins",
+    "Monitoring",
+    "Shell",
+    "Nginx"
+  ],
+  "workExperiences": [
+    {
+      "company": "景曜云服务有限公司",
+      "title": "DevOps 工程师",
+      "startDate": "2023.04",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "拾岸技术实验室",
+      "title": "运维实习生",
+      "startDate": "2022.02",
+      "endDate": "2023.03"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构山泽大学",
+      "degree": "本科",
+      "fieldOfStudy": "网络工程",
+      "startDate": "2018.09",
+      "endDate": "2022.06"
+    }
+  ]
+}

@@ -23,8 +23,11 @@ class Job(
     @Column(columnDefinition = "jsonb")
     var requirements: Map<String, Any>? = null,
 
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @Column(name = "embedding", columnDefinition = "vector(1536)", insertable = false, updatable = false)
     var embedding: String? = null,
+
+    @Transient
+    var runtimeEmbedding: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")

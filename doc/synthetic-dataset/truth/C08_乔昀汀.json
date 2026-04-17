@@ -1,0 +1,39 @@
+{
+  "candidateName": "乔昀汀",
+  "email": "qiaoyunting@example.com",
+  "phone": "13800005648",
+  "summary": "2 年 Java 后端开发经验，熟悉 Spring Boot、MySQL、接口开发和基础缓存使用。具备一定后端系统建设能力，但 Kotlin 和 Redis 实战经验不多，适合作为 Kotlin 后端岗位的中匹配样本。",
+  "skills": [
+    "Java",
+    "Spring Boot",
+    "MySQL",
+    "REST API",
+    "Maven",
+    "Docker",
+    "Git",
+    "Basic Redis"
+  ],
+  "workExperiences": [
+    {
+      "company": "岚序科技有限公司",
+      "title": "Java 开发工程师",
+      "startDate": "2023.06",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "川禾信息工作室",
+      "title": "后端实习生",
+      "startDate": "2022.03",
+      "endDate": "2023.05"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构星河大学",
+      "degree": "本科",
+      "fieldOfStudy": "软件工程",
+      "startDate": "2018.09",
+      "endDate": "2022.06"
+    }
+  ]
+}

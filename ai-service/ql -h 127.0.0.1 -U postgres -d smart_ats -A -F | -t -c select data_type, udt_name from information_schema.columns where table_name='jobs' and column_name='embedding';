@@ -1,0 +1,24 @@
+                                                             Table "public.jobs"
+    Column    |            Type             | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+--------------+-----------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ id           | uuid                        |           | not null |                   | plain    |             |              | 
+ title        | character varying(255)      |           | not null |                   | extended |             |              | 
+ description  | text                        |           | not null |                   | extended |             |              | 
+ requirements | jsonb                       |           |          |                   | extended |             |              | 
+ created_by   | uuid                        |           |          |                   | plain    |             |              | 
+ created_at   | timestamp without time zone |           | not null | CURRENT_TIMESTAMP | plain    |             |              | 
+ updated_at   | timestamp without time zone |           | not null | CURRENT_TIMESTAMP | plain    |             |              | 
+ embedding    | vector(1536)                |           |          |                   | external |             |              | 
+Indexes:
+    "jobs_pkey" PRIMARY KEY, btree (id)
+    "idx_jobs_embedding_hnsw" hnsw (embedding vector_cosine_ops)
+Foreign-key constraints:
+    "jobs_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+Referenced by:
+    TABLE "job_applications" CONSTRAINT "job_applications_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+    TABLE "job_favorites" CONSTRAINT "job_favorites_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+    TABLE "job_ignores" CONSTRAINT "job_ignores_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+    TABLE "job_recommendations" CONSTRAINT "job_recommendations_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+    TABLE "matching_records" CONSTRAINT "matching_records_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id)
+Access method: heap
+

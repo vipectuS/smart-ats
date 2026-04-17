@@ -8,6 +8,7 @@ data class JobActionStateResponse(
     val applied: Boolean,
     val favorited: Boolean,
     val ignored: Boolean,
+    val applicationStatus: String? = null,
 )
 
 data class CandidateJobActionResponse(
@@ -27,12 +28,14 @@ data class CandidateJobActionListItemResponse(
     val requirements: Map<String, Any>?,
     val actionType: String,
     val actionCreatedAt: LocalDateTime,
+    val actionUpdatedAt: LocalDateTime,
     val actionState: JobActionStateResponse,
 )
 
 fun Job.toCandidateActionListItem(
     actionType: String,
     actionCreatedAt: LocalDateTime,
+    actionUpdatedAt: LocalDateTime,
     actionState: JobActionStateResponse,
 ): CandidateJobActionListItemResponse {
     return CandidateJobActionListItemResponse(
@@ -42,6 +45,7 @@ fun Job.toCandidateActionListItem(
         requirements = requirements,
         actionType = actionType,
         actionCreatedAt = actionCreatedAt,
+        actionUpdatedAt = actionUpdatedAt,
         actionState = actionState,
     )
 }

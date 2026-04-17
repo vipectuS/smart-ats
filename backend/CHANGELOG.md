@@ -1,5 +1,109 @@
 # Backend Changelog
 
+## 2026-04-16
+
+### Admin Module and Demo Reliability
+- Added [backend/src/main/resources/db/migration/V12__create_skill_dictionary.sql](backend/src/main/resources/db/migration/V12__create_skill_dictionary.sql), [backend/src/main/kotlin/com/smartats/backend/controller/AdminController.kt](backend/src/main/kotlin/com/smartats/backend/controller/AdminController.kt), [backend/src/main/kotlin/com/smartats/backend/service/AdminService.kt](backend/src/main/kotlin/com/smartats/backend/service/AdminService.kt), [backend/src/main/kotlin/com/smartats/backend/domain/SkillDictionaryEntry.kt](backend/src/main/kotlin/com/smartats/backend/domain/SkillDictionaryEntry.kt), and the new [backend/src/main/kotlin/com/smartats/backend/dto/admin](backend/src/main/kotlin/com/smartats/backend/dto/admin) package so the backend now exposes a real administrator surface with system overview, skill dictionary maintenance, and parse-failure inspection instead of stopping at role-only RBAC.
+- Updated [backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt](backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt) to publish resume parse messages only after transaction commit, and changed [backend/src/main/resources/application.yml](backend/src/main/resources/application.yml) so the backend-side mock Redis consumer is opt-in by default. This removes the local race where a consumer could read an uncommitted resume row and fail with `Resume not found` during demo seeding.
+- Updated [backend/src/main/kotlin/com/smartats/backend/service/RecommendationService.kt](backend/src/main/kotlin/com/smartats/backend/service/RecommendationService.kt) to flush recommendation deletions before re-inserting a fresh evaluation batch, preventing duplicate-key failures when the same job is evaluated repeatedly against an existing dataset.
+- Added [backend/src/test/kotlin/com/smartats/backend/AdminControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/AdminControllerTest.kt) and extended [backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt) with repeat-evaluation coverage. Re-ran `mvn -Dtest=JobControllerTest,CandidateControllerTest,ResumeControllerTest,AdminControllerTest test` successfully.
+
+#### Next
+- If the admin module grows beyond the current minimum deliverable, split skill governance and runtime diagnostics into dedicated bounded contexts instead of continuing to expand a single controller.
+- If deployment needs stronger isolation later, move the current local demo bootstrap assumptions into container profiles or dedicated deployment descriptors instead of keeping them only in shell tooling.
+
+## 2026-04-05
+
+### Local Embedding Persistence Guard
+- Updated [backend/src/main/kotlin/com/smartats/backend/domain/Job.kt](backend/src/main/kotlin/com/smartats/backend/domain/Job.kt), [backend/src/main/kotlin/com/smartats/backend/domain/Resume.kt](backend/src/main/kotlin/com/smartats/backend/domain/Resume.kt), [backend/src/main/kotlin/com/smartats/backend/service/JobService.kt](backend/src/main/kotlin/com/smartats/backend/service/JobService.kt), [backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt](backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt), and [backend/src/main/kotlin/com/smartats/backend/service/RecommendationService.kt](backend/src/main/kotlin/com/smartats/backend/service/RecommendationService.kt) so local/demo mode with `app.embedding.native-vector-storage-enabled=false` now keeps generated embeddings in runtime-only cache fields instead of flushing plain strings into PostgreSQL `vector` columns.
+- Added PostgreSQL regression coverage in [backend/src/test/kotlin/com/smartats/backend/RecommendationLocalEmbeddingIntegrationTest.kt](backend/src/test/kotlin/com/smartats/backend/RecommendationLocalEmbeddingIntegrationTest.kt), proving that non-native vector mode can still create jobs, evaluate parsed resumes, and leave database vector columns untouched while in-memory semantic scoring remains available.
+
+#### Next
+- If local demo mode starts spanning multiple requests for the same freshly created job or resume, decide whether to persist embeddings into a separate text/debug column or keep the current request-time recomputation behavior.
+- If production deployment later needs first-class JPA vector mapping instead of native SQL updates, introduce a proper pgvector Hibernate type rather than relying on string literals.
+
+### Candidate External Context Forwarding
+- Extended [backend/src/main/kotlin/com/smartats/backend/queue/ResumeParseMessage.kt](backend/src/main/kotlin/com/smartats/backend/queue/ResumeParseMessage.kt) with `externalContentReferences`, and updated [backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt](backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt) so candidate-owned `githubUrl` and `portfolioUrl` now flow into the resume parse queue payload whenever a candidate upload or re-parse is triggered.
+- Strengthened [backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt) with a contract test proving that candidate profile links are forwarded into the parse message while plain uploads without a profile still publish an empty external reference list.
+- Re-ran `mvn -Dtest=CandidateControllerTest test` and confirmed the targeted suite passes with 11 tests and zero failures.
+
+#### Next
+- Lift the current external context payload from plain URL forwarding to a versioned contract if GitHub-specific metadata such as README, language mix, or repo description starts to diverge from generic portfolio HTML.
+- Decide whether HR-triggered `POST /api/resumes/{id}/parse` should later support manually attached external references for non-candidate resumes, or remain candidate-profile-driven only.
+
+### Candidate Fresh Path Verification
+- Extended [backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt) with a fresh-candidate integration path that now verifies `POST /api/resumes/upload` creates a `PENDING_PARSE` resume, `POST /api/candidate/match-jobs` is blocked before parsing completes, and the same candidate can recover into profile refresh, reverse matching, apply, application list, and timeline once parsed data is present.
+- Re-ran `mvn -Dtest=CandidateControllerTest test` and confirmed the targeted suite now passes with 10 tests and zero failures, giving the Candidate demo path a stronger backend regression guard instead of relying only on manual walkthrough.
+
+#### Next
+- If the next walkthrough still finds instability, add a second targeted contract test around `PARSE_FAILED` recovery so Candidate UI fallback text is backed by an explicit backend path.
+- Decide later whether to broaden Candidate-side automated coverage into a dedicated end-to-end test slice, or keep it focused on controller contracts for iteration speed.
+
+### Job Application Review Workflow
+- Added [backend/src/main/resources/db/migration/V11__job_application_review_state.sql](backend/src/main/resources/db/migration/V11__job_application_review_state.sql) plus matching H2 test migration [backend/src/test/resources/db/test-migration/V11__job_application_review_state.sql](backend/src/test/resources/db/test-migration/V11__job_application_review_state.sql) to expand `job_applications` from a simple apply/withdraw state machine into a recruiter-review workflow with `INTERVIEW`, `REJECTED`, and persisted `review_note` support.
+- Updated [backend/src/main/kotlin/com/smartats/backend/service/JobService.kt](backend/src/main/kotlin/com/smartats/backend/service/JobService.kt), [backend/src/main/kotlin/com/smartats/backend/controller/JobController.kt](backend/src/main/kotlin/com/smartats/backend/controller/JobController.kt), [backend/src/main/kotlin/com/smartats/backend/dto/job/JobApplicationReviewItemResponse.kt](backend/src/main/kotlin/com/smartats/backend/dto/job/JobApplicationReviewItemResponse.kt), and [backend/src/main/kotlin/com/smartats/backend/dto/job/UpdateJobApplicationReviewRequest.kt](backend/src/main/kotlin/com/smartats/backend/dto/job/UpdateJobApplicationReviewRequest.kt) so HR/Admin users can list non-withdrawn applications and update each application through `PUT /api/jobs/{jobId}/applications/{applicationId}` with interview/reject state plus review note.
+- Extended candidate-facing contracts in [backend/src/main/kotlin/com/smartats/backend/dto/candidate/CandidateJobActionDTOs.kt](backend/src/main/kotlin/com/smartats/backend/dto/candidate/CandidateJobActionDTOs.kt), [backend/src/main/kotlin/com/smartats/backend/dto/candidate/CandidateTimelineDTOs.kt](backend/src/main/kotlin/com/smartats/backend/dto/candidate/CandidateTimelineDTOs.kt), and [backend/src/main/kotlin/com/smartats/backend/service/CandidateJobActionService.kt](backend/src/main/kotlin/com/smartats/backend/service/CandidateJobActionService.kt) so candidate applications, action state, and timeline can reflect recruiter review transitions instead of assuming every active application is always plain `APPLIED`.
+- Extended [backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt) and [backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt); the targeted suites now pass with 11 and 9 tests respectively and zero failures.
+
+#### Next
+- Decide whether recruiter review should remain status-only for demo stability or grow into a dedicated interview scheduling/result log model in a later slice.
+- If recruiter notes become more important, consider exposing author and timestamp metadata per review update instead of keeping only the latest `review_note` on the application row.
+
+### HR Job Application Review Contract
+- Added [backend/src/main/kotlin/com/smartats/backend/dto/job/JobApplicationReviewItemResponse.kt](backend/src/main/kotlin/com/smartats/backend/dto/job/JobApplicationReviewItemResponse.kt), updated [backend/src/main/kotlin/com/smartats/backend/repository/JobApplicationRepository.kt](backend/src/main/kotlin/com/smartats/backend/repository/JobApplicationRepository.kt), and extended [backend/src/main/kotlin/com/smartats/backend/service/JobService.kt](backend/src/main/kotlin/com/smartats/backend/service/JobService.kt) so HR/Admin users can query active applications for a specific job through `GET /api/jobs/{jobId}/applications`, including candidate summary plus latest owned resume summary for direct review jumps.
+- Restricted the new application-review endpoint to the original job creator or an admin, keeping HR-side applicant visibility consistent with the existing job edit ownership rule instead of exposing every recruiter's active applicant pool to all HR users.
+- Extended [backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt) with coverage for successful applicant listing and forbidden cross-HR access, then re-ran the targeted suite with zero failures.
+
+#### Next
+- Decide whether the next recruiter-side iteration should add review transitions such as interview, shortlist, and reject on top of the new applicant list, or keep this slice read-only for demo stability.
+- If applicant volume grows, consider replacing the per-candidate latest-resume lookup with a dedicated projection query to avoid N+1 reads during HR review.
+
+### Job Update Contract
+- Added [backend/src/main/kotlin/com/smartats/backend/dto/job/UpdateJobRequest.kt](backend/src/main/kotlin/com/smartats/backend/dto/job/UpdateJobRequest.kt), updated [backend/src/main/kotlin/com/smartats/backend/controller/JobController.kt](backend/src/main/kotlin/com/smartats/backend/controller/JobController.kt), and extended [backend/src/main/kotlin/com/smartats/backend/service/JobService.kt](backend/src/main/kotlin/com/smartats/backend/service/JobService.kt) so HR/Admin users can update an existing job through `PUT /api/jobs/{jobId}` while automatically regenerating the job embedding after title, description, or requirements change.
+- Restricted job updates to the original creator or an admin, so the HR-side edit flow does not silently allow cross-user modification of another recruiter's岗位.
+- Extended [backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt) with success and forbidden-path coverage for the new update endpoint, then re-ran the targeted suite with zero failures.
+
+#### Next
+- Decide whether later iterations should add optimistic-lock style protection for concurrent HR edits, instead of letting the last save win.
+- If job editing becomes frequent in demos, consider exposing an explicit "updated embedding at" field or audit trail rather than relying only on `updatedAt`.
+
+### Browser Preprocessed Payload Contract
+- Added optional browser-side PDF preprocessing payload support to [backend/src/main/kotlin/com/smartats/backend/dto/resume/CreateResumeRequest.kt](backend/src/main/kotlin/com/smartats/backend/dto/resume/CreateResumeRequest.kt), [backend/src/main/kotlin/com/smartats/backend/domain/Resume.kt](backend/src/main/kotlin/com/smartats/backend/domain/Resume.kt), and [backend/src/main/kotlin/com/smartats/backend/queue/ResumeParseMessage.kt](backend/src/main/kotlin/com/smartats/backend/queue/ResumeParseMessage.kt), so candidate uploads can carry paged preview images and text snippets without replacing the existing lightweight reference field.
+- Added production/test Flyway migrations [backend/src/main/resources/db/migration/V10__browser_preprocessed_resume_payload.sql](backend/src/main/resources/db/migration/V10__browser_preprocessed_resume_payload.sql) and [backend/src/test/resources/db/test-migration/V10__browser_preprocessed_resume_payload.sql](backend/src/test/resources/db/test-migration/V10__browser_preprocessed_resume_payload.sql) to persist browser-preprocessed payload metadata safely in both PostgreSQL and H2 test profiles.
+- Extended [backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt) to assert that browser-preprocessed page batching metadata is both stored and published onto the parse queue. Re-ran `CandidateControllerTest` successfully with zero failures.
+
+#### Next
+- Decide whether the backend should later expose a compact preview summary in candidate-facing resume APIs or keep the stored browser payload internal-only for AI consumption.
+- If larger PDFs start causing payload growth, add a backend-side cap or compression rule for `pagePreviews` before broadening the contract further.
+
+### Candidate Upload Auto Queue
+- Updated [backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt](backend/src/main/kotlin/com/smartats/backend/service/ResumeService.kt) so candidate uploads created via `POST /api/resumes/upload` now publish a resume parse message immediately after the record is stored, avoiding a dead-end `PENDING_PARSE` state for the new frontend upload entry.
+- Extended [backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt) so candidate upload coverage now also asserts queue publication with the uploaded resume reference.
+
+#### Next
+- Decide whether the backend should persist an explicit upload-source field instead of overloading `rawContentReference` semantics.
+- Validate whether candidate uploads should keep `PENDING_PARSE` until AI consumption begins or transition directly to `PARSING` once the queue message is published.
+
+### Phase 1 Contract Verification Support
+- Extended [backend/src/test/kotlin/com/smartats/backend/ResumeControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/ResumeControllerTest.kt) with pagination metadata assertions so the frontend Phase 1 jobs/resumes pagination refactor is covered by a backend contract test.
+- Re-ran targeted backend verification for [backend/src/test/kotlin/com/smartats/backend/ResumeControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/ResumeControllerTest.kt), [backend/src/test/kotlin/com/smartats/backend/AuthControllerIntegrationTest.kt](backend/src/test/kotlin/com/smartats/backend/AuthControllerIntegrationTest.kt), [backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/CandidateControllerTest.kt), and [backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt](backend/src/test/kotlin/com/smartats/backend/JobControllerTest.kt); all targeted suites passed with zero failures.
+
+#### Next
+- If Phase 1 continues to tighten frontend state handling, add any missing controller-level assertions only where a real UI contract is still uncovered rather than broadening backend tests indiscriminately.
+- Keep README and module GUIDE aligned with the verified auth, pagination, and candidate timeline contracts before Phase 2 expands the UI surface further.
+
+## 2026-04-04
+
+### Config Hygiene - Local Override Split
+- Moved sensitive local runtime values out of [backend/src/main/resources/application.yml](backend/src/main/resources/application.yml) and replaced tracked defaults with placeholder-safe values for database password, JWT secret, and internal callback key.
+- Added [backend/src/main/kotlin/com/smartats/backend/config/AdminSeedProperties.kt](backend/src/main/kotlin/com/smartats/backend/config/AdminSeedProperties.kt) plus updated [backend/src/main/kotlin/com/smartats/backend/config/DataSeeder.kt](backend/src/main/kotlin/com/smartats/backend/config/DataSeeder.kt) so default admin seeding is opt-in and sourced from configuration instead of hardcoded `admin/admin` in tracked code.
+- Added tracked local template [backend/local/backend-local.example.yml](backend/local/backend-local.example.yml) and wired optional import of ignored [backend/local/backend-local.yml](backend/local/backend-local.yml) for machine-specific development credentials.
+- Updated [backend/GUIDE.md](backend/GUIDE.md) to document the new local override workflow and avoid publishing real local credentials in module docs.
+
+#### Next
+- Replace remaining `println` runtime diagnostics in bootstrap/config flows with structured logging where it improves operational clarity.
+- Decide whether local override files should later be standardized under a repo-wide `.env` strategy or remain module-specific for clearer ownership.
+
 ## 2026-03-19
 
 ### Milestone 1 - Foundation & Security

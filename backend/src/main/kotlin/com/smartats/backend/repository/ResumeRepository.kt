@@ -1,6 +1,7 @@
 package com.smartats.backend.repository
 
 import com.smartats.backend.domain.Resume
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -17,6 +18,8 @@ interface ResumeRepository : JpaRepository<Resume, UUID> {
 	fun findTopByOwnerUserIdAndStatusOrderByUpdatedAtDesc(userId: UUID, status: String): Resume?
 
 	fun findByStatus(status: String): List<Resume>
+
+	fun findByStatusOrderByUpdatedAtDesc(status: String, pageable: Pageable): List<Resume>
 
 	fun findByStatusAndUpdatedAtGreaterThanEqual(status: String, updatedAt: LocalDateTime): List<Resume>
 

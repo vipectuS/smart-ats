@@ -1,10 +1,12 @@
 spring:
   application:
     name: smart-ats-backend
+  config:
+    import: optional:file:./local/backend-local.yml
   datasource:
     url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:smart_ats}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:talamh}
+    password: ${DB_PASSWORD:change-me-db-password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -30,7 +32,7 @@ spring:
 app:
   security:
     jwt:
-      secret: ${JWT_SECRET:smart-ats-jwt-secret-key-should-be-at-least-32-bytes-long}
+      secret: ${JWT_SECRET:change-me-jwt-secret-at-least-32-bytes}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
   embedding:
     dimension: ${EMBEDDING_DIMENSION:1536}
@@ -42,11 +44,17 @@ app:
     pgvector-query-enabled: ${EMBEDDING_PGVECTOR_QUERY_ENABLED:true}
   internal-callback:
     header-name: ${INTERNAL_CALLBACK_HEADER_NAME:X-Internal-Api-Key}
-    api-key: ${INTERNAL_CALLBACK_API_KEY:smart-ats-internal-callback-key}
+    api-key: ${INTERNAL_CALLBACK_API_KEY:change-me-internal-callback-key}
   resume-queue:
     channel: ${RESUME_QUEUE_CHANNEL:resume.parse.requests}
-    listener-enabled: ${RESUME_QUEUE_LISTENER_ENABLED:true}
+    listener-enabled: ${RESUME_QUEUE_LISTENER_ENABLED:false}
     mock-processing-delay-millis: ${RESUME_QUEUE_MOCK_DELAY_MS:250}
+  seed-default-admin:
+    enabled: ${SEED_DEFAULT_ADMIN_ENABLED:false}
+    username: ${SEED_DEFAULT_ADMIN_USERNAME:admin}
+    password: ${SEED_DEFAULT_ADMIN_PASSWORD:change-me-admin-password}
+    email: ${SEED_DEFAULT_ADMIN_EMAIL:admin@example.com}
 
 server:
   port: 18080
+

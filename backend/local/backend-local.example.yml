@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    password: change-me-db-password
+
+app:
+  security:
+    jwt:
+      secret: change-me-jwt-secret-at-least-32-bytes
+  internal-callback:
+    api-key: change-me-internal-callback-key
+  seed-default-admin:
+    enabled: true
+    username: admin
+    password: change-me-admin-password
+    email: admin@example.com

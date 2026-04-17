@@ -20,7 +20,7 @@ Smart ATS 是一个基于前后端分离与 AI 微服务的智能招聘辅助系
 说明：
 - 根目录不再作为独立 Node 项目使用。
 - 前端、后端、AI 服务各自维护自己的依赖与启动方式。
-- `tools/maintenance/` 仅保留给未来可复用的维护工具，历史一次性补丁脚本已清理。
+- `tools/maintenance/` 现在包含可复用的统一启动、演示数据导入和证据导出脚本。
 
 ## 技术栈
 
@@ -29,6 +29,13 @@ Smart ATS 是一个基于前后端分离与 AI 微服务的智能招聘辅助系
 - AI Service: FastAPI, Pydantic, LiteLLM, HTTPX
 
 ## 启动方式
+
+### 本地配置文件
+
+- 后端：从 `backend/local/backend-local.example.yml` 复制到 `backend/local/backend-local.yml`，填写本机数据库密码、JWT 密钥，以及是否启用本地管理员种子。
+- AI 服务：从 `ai-service/.env.example` 复制到 `ai-service/.env`，填写内部回调密钥、数据库密码和模型相关配置。
+- 前端：可选从 `frontend/.env.example` 复制到 `frontend/.env.local`，按本机环境覆盖代理目标、直连 API 地址和本地演示账号。
+- 仓库中不再提交可直接使用的默认管理员账号密码；如需本地演示账号，请在后端本地覆盖配置中显式开启。
 
 ### 前置依赖
 - Java 21+
@@ -70,6 +77,32 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 统一启动与演示数据导入
+
+如果本机已具备 PostgreSQL、Redis 和各模块本地配置，可直接在仓库根目录执行：
+
+```bash
+tools/maintenance/bootstrap_local_demo.sh --with-demo-data
+```
+
+该入口会启动三服务、导入合成岗位与候选人、触发评估，并输出：
+
+- `tools/maintenance/output/seed_demo_data_summary.json`
+- `tools/maintenance/output/phase6_report.json`
+
+停止命令：
+
+```bash
+tools/maintenance/stop_local_demo.sh
+```
+
+## 当前可验证主路径
+
+1. HR 登录后进入看板，查看岗位列表、岗位详情、推荐结果与简历列表。
+2. Candidate 注册或登录后进入推荐页，执行投递、收藏、忽略与时间线查看。
+3. 简历上传的最终正式方案必须走浏览器端 Wasm PDF 预处理主链路，当前计划已写入 `PROJECT_PHASE_PLAN.md`，后续实现以该约束为准。
+4. 管理员可进入新增的 Admin Console，查看系统概览、技能词典与解析失败记录。
 
 ## 当前建议阅读顺序
 

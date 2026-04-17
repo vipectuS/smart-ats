@@ -8,6 +8,16 @@
       </div>
     </div>
 
+    <div v-if="errorMsg" class="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-rose-700 shrink-0">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="font-semibold">看板数据加载失败</p>
+          <p class="text-sm mt-1">{{ errorMsg }}</p>
+        </div>
+        <button @click="fetchStats" class="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition">重试</button>
+      </div>
+    </div>
+
     <div class="flex justify-between items-center bg-white/50 backdrop-blur-xl p-6 rounded-2xl border border-white/20 shadow-sm shrink-0">
       <div>
         <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">招聘概览与数据大屏</h1>
@@ -19,8 +29,8 @@
           <option :value="30">近 30 天</option>
           <option :value="90">近 90 天</option>
         </select>
-        <button class="px-4 py-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 font-medium hover:bg-slate-50 transition flex items-center gap-2">
-          <i class="fas fa-download"></i> 导出报表
+        <button @click="fetchStats" class="px-4 py-2 bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200 font-medium hover:bg-slate-50 transition flex items-center gap-2">
+          <i class="fas fa-rotate-right"></i> 刷新数据
         </button>
       </div>
     </div>
@@ -104,6 +114,7 @@ use([
 
 const loading = ref(true)
 const timeRange = ref(7)
+const errorMsg = ref('')
 
 // Stats Initial Data
 const stats = ref([
@@ -156,6 +167,7 @@ const lineOption = ref({
 const fetchStats = async () => {
   loading.value = true
   try {
+    errorMsg.value = ''
     const response = await api.get('/hr/dashboard/stats', { params: { days: timeRange.value } })
     const data = response.data
     
@@ -185,6 +197,7 @@ const fetchStats = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch dashboard stats', error)
+    errorMsg.value = '请检查看板接口或当前登录角色。'
   } finally {
     loading.value = false
   }

@@ -1,0 +1,39 @@
+{
+  "candidateName": "许逸晨",
+  "email": "xuyichen@example.com",
+  "phone": "13800007893",
+  "summary": "2 年测试自动化经验，熟悉 Web 自动化、接口测试、回归测试和发布前质量检查。擅长使用 Python、Pytest、Selenium 构建自动化脚本，并能与研发配合定位回归问题。",
+  "skills": [
+    "Python",
+    "Pytest",
+    "Selenium",
+    "API Testing",
+    "Postman",
+    "SQL",
+    "CI/CD",
+    "Test Case Design"
+  ],
+  "workExperiences": [
+    {
+      "company": "星港软件服务有限公司",
+      "title": "测试开发工程师",
+      "startDate": "2023.04",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "泽衡科技实验室",
+      "title": "QA 实习生",
+      "startDate": "2022.03",
+      "endDate": "2023.03"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构金陵理工学院",
+      "degree": "本科",
+      "fieldOfStudy": "计算机科学与技术",
+      "startDate": "2018.09",
+      "endDate": "2022.06"
+    }
+  ]
+}

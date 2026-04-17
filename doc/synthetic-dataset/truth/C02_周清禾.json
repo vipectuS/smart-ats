@@ -1,0 +1,39 @@
+{
+  "candidateName": "周清禾",
+  "email": "zhouqinghe@example.com",
+  "phone": "13800004562",
+  "summary": "2 年前端开发经验，专注 Vue 3、TypeScript 和数据可视化页面开发。熟悉组件化设计、状态管理、表单交互和 ECharts 看板实现，能够把复杂业务流程拆分成稳定的可演示页面链路。",
+  "skills": [
+    "Vue 3",
+    "TypeScript",
+    "Vite",
+    "Pinia",
+    "Vue Router",
+    "ECharts",
+    "Tailwind CSS",
+    "Axios"
+  ],
+  "workExperiences": [
+    {
+      "company": "晴岚互动科技有限公司",
+      "title": "前端开发工程师",
+      "startDate": "2023.06",
+      "endDate": "2025.03"
+    },
+    {
+      "company": "白塔数字设计工作室",
+      "title": "前端实习生",
+      "startDate": "2022.02",
+      "endDate": "2023.05"
+    }
+  ],
+  "educationExperiences": [
+    {
+      "school": "虚构江南信息大学",
+      "degree": "本科",
+      "fieldOfStudy": "数字媒体技术",
+      "startDate": "2018.09",
+      "endDate": "2022.06"
+    }
+  ]
+}

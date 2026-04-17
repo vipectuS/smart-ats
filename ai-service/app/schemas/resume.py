@@ -7,10 +7,39 @@ from pydantic import Field
 from app.schemas.common import CamelExtraIgnoreModel, CamelModel
 
 
+class ExternalContentReference(CamelExtraIgnoreModel):
+    source_type: str = Field(min_length=1)
+    url: str = Field(min_length=1)
+
+
 class ResumeParseMessage(CamelExtraIgnoreModel):
     resume_id: UUID
     raw_content_reference: str = Field(min_length=1)
+    browser_preprocessed_payload: "BrowserResumePreprocessedPayload | None" = None
+    external_content_references: list[ExternalContentReference] = Field(default_factory=list)
     requested_at: datetime
+
+
+class BrowserResumePagePreview(CamelExtraIgnoreModel):
+    page_number: int = Field(ge=1)
+    width: int = Field(ge=1)
+    height: int = Field(ge=1)
+    image_data_url: str = Field(min_length=1)
+    text_preview: str | None = None
+
+
+class BrowserResumePreprocessedPayload(CamelExtraIgnoreModel):
+    engine: str = Field(min_length=1)
+    mode: str = Field(min_length=1)
+    source_file_name: str = Field(min_length=1)
+    source_mime_type: str = Field(min_length=1)
+    source_file_size: int = Field(ge=1)
+    derived_reference: str = Field(min_length=1)
+    page_count: int = Field(ge=1)
+    extracted_text_preview: str | None = None
+    generated_at: datetime
+    warnings: list[str] = Field(default_factory=list)
+    page_previews: list[BrowserResumePagePreview] = Field(default_factory=list)
 
 
 class BasicInfo(CamelModel):

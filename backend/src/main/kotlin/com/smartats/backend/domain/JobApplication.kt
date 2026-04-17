@@ -41,6 +41,9 @@ class JobApplication(
     @Column(name = "status", nullable = false, length = 32)
     var status: JobApplicationStatus = JobApplicationStatus.APPLIED,
 
+    @Column(name = "review_note", columnDefinition = "TEXT")
+    var reviewNote: String? = null,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
 

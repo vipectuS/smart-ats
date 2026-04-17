@@ -36,12 +36,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '@/utils/api';
+import { subscribeCandidateActivityUpdated } from '@/utils/candidateActivity';
 
 interface TimelineEvent {
   id: string;
-  action: 'APPLIED' | 'WITHDRAWN' | 'FAVORITED' | 'UNFAVORITED' | 'IGNORED' | 'UNIGNORED';
+  action: 'APPLIED' | 'INTERVIEW' | 'REJECTED' | 'WITHDRAWN' | 'FAVORITED' | 'UNFAVORITED' | 'IGNORED' | 'UNIGNORED';
   jobTitle: string;
   companyName: string;
   timestamp: string;
@@ -50,14 +51,18 @@ interface TimelineEvent {
 const events = ref<TimelineEvent[]>([]);
 const loading = ref(true);
 const errorMsg = ref('');
+let unsubscribe: (() => void) | null = null;
 
 const fetchTimeline = async () => {
   try {
     loading.value = true;
-    // Assuming backend returns an array or an object with data property
+    errorMsg.value = '';
     const response: any = await api.get('/candidates/me/timeline');
-    // If your backend wrapped the data in a 'data' field, handle it here:
-    events.value = response.data || response || [];
+    const items = response.data || [];
+    events.value = items.map((item: any, index: number) => ({
+      id: `${item.action}-${item.timestamp}-${index}`,
+      ...item,
+    }));
   } catch (err: any) {
     console.error('Failed to load timeline:', err);
     errorMsg.value = '无法加载时间线';
@@ -67,12 +72,22 @@ const fetchTimeline = async () => {
 };
 
 onMounted(() => {
-  fetchTimeline();
+  void fetchTimeline();
+  unsubscribe = subscribeCandidateActivityUpdated(() => {
+    void fetchTimeline();
+  });
+});
+
+onBeforeUnmount(() => {
+  unsubscribe?.();
+  unsubscribe = null;
 });
 
 const getActionLabel = (action: string) => {
   const map: Record<string, string> = {
     'APPLIED': '投递了简历',
+    'INTERVIEW': '进入面试阶段',
+    'REJECTED': '被标记为未通过',
     'WITHDRAWN': '撤回了投递',
     'FAVORITED': '收藏了职位',
     'UNFAVORITED': '取消收藏',
@@ -85,6 +100,8 @@ const getActionLabel = (action: string) => {
 const getActionColor = (action: string) => {
   const map: Record<string, string> = {
     'APPLIED': 'bg-blue-500',
+    'INTERVIEW': 'bg-emerald-500',
+    'REJECTED': 'bg-rose-500',
     'WITHDRAWN': 'bg-gray-500',
     'FAVORITED': 'bg-yellow-500',
     'UNFAVORITED': 'bg-gray-400',
