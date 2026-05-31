@@ -10,10 +10,27 @@ from pydantic import ValidationError
 from app.config import Settings
 from app.schemas.resume import ResumeParseMessage
 from app.services.callbacks import BackendCallbackClient
+from app.services.litellm_resilience import LiteLLMCircuitOpenError, LiteLLMRetryExhaustedError
 from app.services.parser import BaseResumeParser, build_resume_parser
 
 
 logger = logging.getLogger(__name__)
+
+
+def classify_parse_failure(exc: Exception) -> str | None:
+    if isinstance(exc, LiteLLMCircuitOpenError):
+        return "AI_UPSTREAM_CIRCUIT_OPEN"
+    if isinstance(exc, LiteLLMRetryExhaustedError):
+        return "AI_UPSTREAM_RETRY_EXHAUSTED"
+
+    message = str(exc).lower()
+    if "timeout" in message or "null response" in message:
+        return "RESUME_PARSE_TIMEOUT"
+    if "ocr" in message and ("low" in message or "confidence" in message):
+        return "OCR_LOW_CONFIDENCE"
+    if "external content" in message or "unavailable" in message:
+        return "EXTERNAL_CONTENT_UNREACHABLE"
+    return None
 
 
 class ResumeQueueListener:
@@ -140,7 +157,11 @@ class ResumeQueueListener:
         except Exception as exc:
             logger.exception("Failed to parse or upload resumeId=%s", message.resume_id)
             try:
-                await self._callback_client.report_failure(message.resume_id, str(exc))
+                await self._callback_client.report_failure(
+                    message.resume_id,
+                    str(exc),
+                    failure_code=classify_parse_failure(exc),
+                )
                 logger.info("Submitted parse failure callback for resumeId=%s", message.resume_id)
             except Exception:
                 logger.exception("Failed to report parse failure for resumeId=%s", message.resume_id)

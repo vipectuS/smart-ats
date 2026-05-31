@@ -2,13 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.config import Settings, get_settings
 from app.schemas.embedding import EmbeddingRequest, EmbeddingResponse
+from app.services.litellm_resilience import ResilientLiteLLMClient, get_shared_litellm_client
 from app.services.embedding import EmbeddingGenerationError, EmbeddingService
 
 router = APIRouter(prefix="/api/embeddings", tags=["embeddings"])
 
 
-def get_embedding_service(settings: Settings = Depends(get_settings)) -> EmbeddingService:
-    return EmbeddingService(settings)
+def get_litellm_client() -> ResilientLiteLLMClient:
+    return get_shared_litellm_client()
+
+
+def get_embedding_service(
+    settings: Settings = Depends(get_settings),
+    client: ResilientLiteLLMClient = Depends(get_litellm_client),
+) -> EmbeddingService:
+    return EmbeddingService(settings, resilience_client=client)
 
 
 @router.post("", response_model=EmbeddingResponse)

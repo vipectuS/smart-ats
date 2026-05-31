@@ -29,3 +29,25 @@ ai-service/app/__pycache__/
 ai-service/tests/__pycache__/
 ai-service/.env
 
+# Maintenance debug snapshots
+tools/maintenance/output/ai_observability_snapshot_*.json
+tools/maintenance/output/ai_observability_snapshot_*.md
+
+# Submission-excluded documentation
+/.github/
+AGENTS.md
+DESIGN.md
+GUIDE.md
+PROJECT_PHASE_PLAN.md
+README.md
+CHANGELOG.md
+THESIS_IMPROVEMENT_PLAN*.md
+*.doc
+doc/
+
+# Generated local runtime artifacts
+.frontend-build.log
+tools/maintenance/logs/
+tools/maintenance/output/
+tools/maintenance/pids/
+

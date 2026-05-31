@@ -6,8 +6,10 @@ import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
 import com.smartats.backend.repository.JobRecommendationRepository
 import com.smartats.backend.repository.JobRepository
+import com.smartats.backend.repository.OrganizationRepository
 import com.smartats.backend.repository.ResumeRepository
 import com.smartats.backend.repository.UserRepository
+import com.smartats.backend.service.OrganizationService
 import com.smartats.backend.service.RecommendationService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -35,6 +37,9 @@ class RecommendationVectorIntegrationTest {
 
     @Autowired
     private lateinit var jobRepository: JobRepository
+
+    @Autowired
+    private lateinit var organizationRepository: OrganizationRepository
 
     @Autowired
     private lateinit var resumeRepository: ResumeRepository
@@ -70,6 +75,7 @@ class RecommendationVectorIntegrationTest {
                 description = "Build ATS backend services using Kotlin Spring Boot PostgreSQL Redis and vector search",
                 requirements = mapOf("skills" to listOf("Kotlin", "Spring Boot", "PostgreSQL", "Redis")),
                 createdBy = owner,
+                organization = organizationRepository.findById(OrganizationService.LEGACY_ORGANIZATION_ID).orElseThrow(),
             ),
         )
 
@@ -153,6 +159,7 @@ class RecommendationVectorIntegrationTest {
                 description = "Build Java Spring Boot services with Docker and PostgreSQL",
                 requirements = mapOf("skills" to listOf("Java", "Spring Boot", "Docker", "PostgreSQL")),
                 createdBy = hrOwner,
+                organization = organizationRepository.findById(OrganizationService.LEGACY_ORGANIZATION_ID).orElseThrow(),
             ),
         )
         jobRepository.save(
@@ -161,6 +168,7 @@ class RecommendationVectorIntegrationTest {
                 description = "Need interview research, Figma and workshop facilitation",
                 requirements = mapOf("skills" to listOf("Figma", "Research")),
                 createdBy = hrOwner,
+                organization = organizationRepository.findById(OrganizationService.LEGACY_ORGANIZATION_ID).orElseThrow(),
             ),
         )
 

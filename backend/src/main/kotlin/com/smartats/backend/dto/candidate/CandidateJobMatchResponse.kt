@@ -1,5 +1,6 @@
 package com.smartats.backend.dto.candidate
 
+import com.smartats.backend.dto.organization.OrganizationRefResponse
 import com.smartats.backend.dto.xai.StructuredJobFitReport
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -15,6 +16,7 @@ data class CandidateJobRecommendationResponse(
     val jobId: UUID,
     val title: String,
     val description: String,
+    val organization: OrganizationRefResponse,
     val requirements: Map<String, Any>?,
     val matchScore: BigDecimal,
     val semanticScore: BigDecimal,

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import api from '../utils/api';
+import { resolveApiError } from '../utils/apiError';
 
 export const useJobStore = defineStore('job', {
   state: () => ({
@@ -21,7 +22,7 @@ export const useJobStore = defineStore('job', {
         this.totalElements = response.data.totalElements;
         this.totalPages = response.data.totalPages;
       } catch (err: any) {
-        this.error = err.response?.data?.message || 'Failed to fetch jobs';
+        this.error = resolveApiError(err, 'Failed to fetch jobs').summary;
       } finally {
         this.loading = false;
       }
@@ -34,7 +35,7 @@ export const useJobStore = defineStore('job', {
         this.jobs.unshift(response.data);
         return true;
       } catch (err: any) {
-        this.error = err.response?.data?.message || 'Failed to create job';
+        this.error = resolveApiError(err, 'Failed to create job').summary;
         return false;
       } finally {
         this.loading = false;

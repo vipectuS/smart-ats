@@ -2,16 +2,25 @@ package com.smartats.backend
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.smartats.backend.domain.AccessAuditActionType
+import com.smartats.backend.domain.AccessAuditActorRole
+import com.smartats.backend.domain.AccessAuditSensitiveField
+import com.smartats.backend.domain.AccessAuditTargetType
 import com.smartats.backend.domain.Job
+import com.smartats.backend.domain.Organization
 import com.smartats.backend.domain.Resume
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
 import com.smartats.backend.repository.JobApplicationRepository
 import com.smartats.backend.dto.auth.LoginRequest
+import com.smartats.backend.repository.AccessAuditEventRepository
 import com.smartats.backend.repository.JobRecommendationRepository
 import com.smartats.backend.repository.JobRepository
+import com.smartats.backend.repository.OrganizationRepository
 import com.smartats.backend.repository.ResumeRepository
+import com.smartats.backend.repository.SkillDictionaryRepository
 import com.smartats.backend.repository.UserRepository
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -45,6 +54,9 @@ class JobControllerTest {
     private lateinit var jobRepository: JobRepository
 
     @Autowired
+    private lateinit var organizationRepository: OrganizationRepository
+
+    @Autowired
     private lateinit var resumeRepository: ResumeRepository
 
     @Autowired
@@ -56,8 +68,15 @@ class JobControllerTest {
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
 
+    @Autowired
+    private lateinit var skillDictionaryRepository: SkillDictionaryRepository
+
+    @Autowired
+    private lateinit var accessAuditEventRepository: AccessAuditEventRepository
+
     @BeforeEach
     fun setUp() {
+        accessAuditEventRepository.deleteAll()
         jobRecommendationRepository.deleteAll()
         jobRepository.deleteAll()
         resumeRepository.deleteAll()
@@ -68,10 +87,10 @@ class JobControllerTest {
     fun `create job persists jsonb requirements and returns detail`() {
         val accessToken = obtainAccessToken("job_owner", "job_owner@example.com")
         val requestBody = mapOf(
-            "title" to "Senior Kotlin Engineer",
+            "title" to "Senior API Platform Engineer",
             "description" to "Build secure ATS services",
             "requirements" to mapOf(
-                "skills" to listOf("Kotlin", "Spring Boot", "PostgreSQL"),
+                "skills" to listOf("FastAPI", "OpenAPI", "Flyway"),
                 "experienceYears" to 5,
                 "remote" to true,
             ),
@@ -84,8 +103,8 @@ class JobControllerTest {
                 .content(objectMapper.writeValueAsString(requestBody)),
         )
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.data.title").value("Senior Kotlin Engineer"))
-            .andExpect(jsonPath("$.data.requirements.skills[1]").value("Spring Boot"))
+            .andExpect(jsonPath("$.data.title").value("Senior API Platform Engineer"))
+            .andExpect(jsonPath("$.data.requirements.skills[1]").value("OpenAPI"))
             .andExpect(jsonPath("$.data.createdBy.username").value("job_owner"))
             .andReturn()
 
@@ -109,7 +128,7 @@ class JobControllerTest {
             val requestBody = mapOf(
                 "title" to "Backend Engineer ${index + 1}",
                 "description" to "Maintain hiring workflow ${index + 1}",
-                "requirements" to mapOf("priority" to index + 1, "skills" to listOf("Kotlin")),
+                "requirements" to mapOf("priority" to index + 1, "skills" to listOf("FastAPI")),
             )
 
             mockMvc.perform(
@@ -149,7 +168,7 @@ class JobControllerTest {
                             "title" to "Frontend Engineer",
                             "description" to "Build dashboard interfaces",
                             "requirements" to mapOf(
-                                "skills" to listOf("Vue", "TypeScript"),
+                                "skills" to listOf("Vue 3", "TypeScript"),
                                 "location" to "Shanghai",
                             ),
                         ),
@@ -171,7 +190,7 @@ class JobControllerTest {
                             "title" to "Senior Frontend Engineer",
                             "description" to "Lead dashboard and workflow experience improvements",
                             "requirements" to mapOf(
-                                "skills" to listOf("Vue", "TypeScript", "ECharts"),
+                                "skills" to listOf("Vue 3", "TypeScript", "Pinia"),
                                 "location" to "Hangzhou",
                                 "headcount" to 2,
                             ),
@@ -182,7 +201,7 @@ class JobControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.message").value("Job updated"))
             .andExpect(jsonPath("$.data.title").value("Senior Frontend Engineer"))
-            .andExpect(jsonPath("$.data.requirements.skills[2]").value("ECharts"))
+            .andExpect(jsonPath("$.data.requirements.skills[2]").value("Pinia"))
             .andExpect(jsonPath("$.data.requirements.location").value("Hangzhou"))
             .andExpect(jsonPath("$.data.requirements.headcount").value(2))
 
@@ -209,7 +228,7 @@ class JobControllerTest {
                         mapOf(
                             "title" to "Platform Engineer",
                             "description" to "Maintain ATS platform",
-                            "requirements" to mapOf("skills" to listOf("Kotlin", "PostgreSQL")),
+                            "requirements" to mapOf("skills" to listOf("FastAPI", "Flyway")),
                         ),
                     ),
                 ),
@@ -234,7 +253,33 @@ class JobControllerTest {
                 ),
         )
             .andExpect(status().isForbidden)
-            .andExpect(jsonPath("$.message").value("Only the job creator or an admin can update this job"))
+            .andExpect(jsonPath("$.message").value("Only HRs from the same organization or an admin can update this job"))
+    }
+
+    @Test
+    fun `create job rejects skills outside enabled dictionary`() {
+        val accessToken = obtainAccessToken("invalid_skill_hr", "invalid_skill_hr@example.com")
+        val knownSkill = skillDictionaryRepository.findEnabledNamesOrderByNameAsc().first()
+
+        mockMvc.perform(
+            post("/api/jobs")
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "title" to "Invalid Skill Job",
+                            "description" to "Should be rejected when a skill is not in dictionary",
+                            "requirements" to mapOf(
+                                "skills" to listOf(knownSkill, "DefinitelyNotInDictionary"),
+                                "location" to "Hangzhou",
+                            ),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("These skills are not in the enabled skill dictionary: DefinitelyNotInDictionary"))
     }
 
     @Test
@@ -248,8 +293,9 @@ class JobControllerTest {
             Job(
                 title = "Applied Role",
                 description = "Review live job applications",
-                requirements = mapOf("skills" to listOf("Kotlin", "Vue")),
+                requirements = mapOf("skills" to listOf("FastAPI", "Vue 3")),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
@@ -282,10 +328,41 @@ class JobControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.length()").value(1))
             .andExpect(jsonPath("$.data[0].status").value("APPLIED"))
+            .andExpect(jsonPath("$.data[0].candidate.email").value("active_candidate@example.com"))
             .andExpect(jsonPath("$.data[0].candidate.username").value("active_candidate"))
             .andExpect(jsonPath("$.data[0].candidate.displayName").value("Active Candidate"))
             .andExpect(jsonPath("$.data[0].latestResume.resumeId").value(requireNotNull(resume.id).toString()))
+            .andExpect(jsonPath("$.data[0].latestResume.contactInfo").value("active_candidate@example.com"))
             .andExpect(jsonPath("$.data[0].latestResume.status").value("PARSED"))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(3, accessAuditEvents.size)
+
+        val applicationsAuditEvent = accessAuditEvents.single {
+            it.actionType == AccessAuditActionType.JOB_APPLICATIONS_VIEWED
+        }
+        assertEquals("review_hr", applicationsAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, applicationsAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.JOB, applicationsAuditEvent.targetType)
+        assertEquals(requireNotNull(job.id), applicationsAuditEvent.targetId)
+
+        val sensitiveFieldEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(2, sensitiveFieldEvents.size)
+        assertEquals(
+            setOf(AccessAuditSensitiveField.ACCOUNT_EMAIL, AccessAuditSensitiveField.CONTACT_INFO),
+            sensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet(),
+        )
+        val userEmailAuditEvent = sensitiveFieldEvents.single { it.sensitiveField == AccessAuditSensitiveField.ACCOUNT_EMAIL }
+        assertEquals("review_hr", userEmailAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, userEmailAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.USER, userEmailAuditEvent.targetType)
+        assertEquals(requireNotNull(candidate.id), userEmailAuditEvent.targetId)
+
+        val contactInfoAuditEvent = sensitiveFieldEvents.single { it.sensitiveField == AccessAuditSensitiveField.CONTACT_INFO }
+        assertEquals("review_hr", contactInfoAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, contactInfoAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.RESUME, contactInfoAuditEvent.targetType)
+        assertEquals(requireNotNull(resume.id), contactInfoAuditEvent.targetId)
     }
 
     @Test
@@ -302,7 +379,7 @@ class JobControllerTest {
                         mapOf(
                             "title" to "Restricted Job",
                             "description" to "Only creator can review applications",
-                            "requirements" to mapOf("skills" to listOf("Security")),
+                            "requirements" to mapOf("skills" to listOf("Spring Security")),
                         ),
                     ),
                 ),
@@ -317,7 +394,7 @@ class JobControllerTest {
                 .header("Authorization", "Bearer $otherHrToken"),
         )
             .andExpect(status().isForbidden)
-            .andExpect(jsonPath("$.message").value("Only the job creator or an admin can review applications for this job"))
+            .andExpect(jsonPath("$.message").value("Only HRs from the same organization or an admin can review applications for this job"))
     }
 
     @Test
@@ -331,12 +408,13 @@ class JobControllerTest {
             Job(
                 title = "Workflow Role",
                 description = "HR review workflow role",
-                requirements = mapOf("skills" to listOf("Kotlin")),
+                requirements = mapOf("skills" to listOf("FastAPI")),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
-        resumeRepository.save(
+        val resume = resumeRepository.save(
             Resume(
                 candidateName = "Workflow Candidate",
                 contactInfo = "workflow_candidate@example.com",
@@ -371,7 +449,28 @@ class JobControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.message").value("Application review updated"))
             .andExpect(jsonPath("$.data.status").value("INTERVIEW"))
+            .andExpect(jsonPath("$.data.candidate.email").value("workflow_candidate@example.com"))
+            .andExpect(jsonPath("$.data.latestResume.contactInfo").value("workflow_candidate@example.com"))
             .andExpect(jsonPath("$.data.reviewNote").value("已安排下周技术面，重点追问分布式缓存经验。"))
+
+        val reviewSensitiveFieldEvents = accessAuditEventRepository.findAll()
+            .filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(2, reviewSensitiveFieldEvents.size)
+        assertEquals(
+            setOf(AccessAuditSensitiveField.ACCOUNT_EMAIL, AccessAuditSensitiveField.CONTACT_INFO),
+            reviewSensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet(),
+        )
+        val accountEmailEvent = reviewSensitiveFieldEvents.single { it.sensitiveField == AccessAuditSensitiveField.ACCOUNT_EMAIL }
+        assertEquals("workflow_hr", accountEmailEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, accountEmailEvent.actorRole)
+        assertEquals(AccessAuditTargetType.USER, accountEmailEvent.targetType)
+        assertEquals(requireNotNull(candidate.id), accountEmailEvent.targetId)
+
+        val contactInfoEvent = reviewSensitiveFieldEvents.single { it.sensitiveField == AccessAuditSensitiveField.CONTACT_INFO }
+        assertEquals("workflow_hr", contactInfoEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, contactInfoEvent.actorRole)
+        assertEquals(AccessAuditTargetType.RESUME, contactInfoEvent.targetType)
+        assertEquals(requireNotNull(resume.id), contactInfoEvent.targetId)
 
         mockMvc.perform(
             get("/api/jobs/{jobId}/applications", job.id)
@@ -392,10 +491,11 @@ class JobControllerTest {
                 title = "Senior Kotlin Engineer",
                 description = "Build secure ATS services with Kotlin Spring Boot PostgreSQL and Redis",
                 requirements = mapOf(
-                    "skills" to listOf("Kotlin", "Spring Boot", "PostgreSQL", "Redis"),
+                    "skills" to listOf("FastAPI", "OpenAPI", "Flyway", "Redis Queue"),
                     "level" to "senior",
                 ),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
@@ -432,8 +532,10 @@ class JobControllerTest {
             .andExpect(jsonPath("$.data.evaluatedCount").value(2))
             .andExpect(jsonPath("$.data.recommendations.length()").value(2))
             .andExpect(jsonPath("$.data.recommendations[0].candidate.basicInfo.fullName").value("Alice Chen"))
+            .andExpect(jsonPath("$.data.recommendations[0].scoreBreakdown.skillScore").isNumber)
+            .andExpect(jsonPath("$.data.recommendations[0].scoreBreakdown.semanticScore").isNumber)
             .andExpect(jsonPath("$.data.recommendations[0].candidate.radarScores.technicalDepth").value(9))
-            .andExpect(jsonPath("$.data.recommendations[0].xaiReasoning").value(org.hamcrest.Matchers.containsString("Hybrid score")))
+            .andExpect(jsonPath("$.data.recommendations[0].xaiReasoning").value(org.hamcrest.Matchers.containsString("Senior Kotlin Engineer")))
             .andExpect(jsonPath("$.data.recommendations[0].xaiReport.headline").exists())
             .andExpect(jsonPath("$.data.recommendations[0].matchScore").isNumber)
 
@@ -450,8 +552,9 @@ class JobControllerTest {
             Job(
                 title = "Repeatable Evaluation Engineer",
                 description = "Re-run recommendation batches safely",
-                requirements = mapOf("skills" to listOf("Kotlin", "Redis")),
+                requirements = mapOf("skills" to listOf("FastAPI", "Redis Queue")),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
@@ -468,16 +571,112 @@ class JobControllerTest {
                 .header("Authorization", "Bearer $accessToken"),
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.currentEvaluation.versionNumber").value(1))
+            .andExpect(jsonPath("$.data.previousEvaluation").doesNotExist())
+
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/evaluate", job.id)
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "skillWeight" to 10,
+                            "experienceWeight" to 20,
+                            "educationWeight" to 10,
+                            "semanticWeight" to 60,
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.evaluatedCount").value(1))
+            .andExpect(jsonPath("$.data.currentEvaluation.versionNumber").value(2))
+            .andExpect(jsonPath("$.data.currentEvaluation.evaluatedByUsername").value("repeat_eval"))
+            .andExpect(jsonPath("$.data.currentEvaluation.appliedWeights.semanticWeight").value(60.00))
+            .andExpect(jsonPath("$.data.previousEvaluation.versionNumber").value(1))
+            .andExpect(jsonPath("$.data.previousEvaluation.appliedWeights.skillWeight").value(35.00))
+            .andExpect(jsonPath("$.data.previousEvaluation.appliedWeights.semanticWeight").value(30.00))
+            .andExpect(jsonPath("$.data.previousEvaluation.topRecommendations[0].candidateName").value("Repeat Candidate"))
+
+        val persisted = jobRecommendationRepository.findByJobId(requireNotNull(job.id))
+        org.junit.jupiter.api.Assertions.assertEquals(1, persisted.size)
+    }
+
+    @Test
+    fun `list evaluation history returns latest versions and records audit`() {
+        val accessToken = obtainAccessToken("history_hr", "history_hr@example.com")
+        val owner = userRepository.findByUsername("history_hr").orElseThrow()
+
+        val job = jobRepository.save(
+            Job(
+                title = "History Timeline Engineer",
+                description = "Need repeated evaluations with explainable history",
+                requirements = mapOf("skills" to listOf("Kotlin", "Redis")),
+                createdBy = owner,
+                organization = requireNotNull(owner.organization),
+            ),
+        )
+
+        createParsedResume(
+            fullName = "Timeline Candidate",
+            email = "timeline@example.com",
+            skills = listOf("Kotlin", "Redis", "Spring Boot"),
+            summary = "Supports repeated evaluation history",
+            radarBase = 8,
+        )
 
         mockMvc.perform(
             post("/api/jobs/{jobId}/evaluate", job.id)
                 .header("Authorization", "Bearer $accessToken"),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.data.evaluatedCount").value(1))
 
-        val persisted = jobRecommendationRepository.findByJobId(requireNotNull(job.id))
-        org.junit.jupiter.api.Assertions.assertEquals(1, persisted.size)
+        mockMvc.perform(
+            post("/api/jobs/{jobId}/evaluate", job.id)
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "skillWeight" to 15,
+                            "experienceWeight" to 15,
+                            "educationWeight" to 10,
+                            "semanticWeight" to 60,
+                            "evaluationNote" to "验证语义优先策略是否提升 Top1 稳定性",
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            get("/api/jobs/{jobId}/evaluations", job.id)
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.length()").value(2))
+            .andExpect(jsonPath("$.data[0].versionNumber").value(2))
+            .andExpect(jsonPath("$.data[0].evaluatedByUsername").value("history_hr"))
+            .andExpect(jsonPath("$.data[0].evaluationNote").value("验证语义优先策略是否提升 Top1 稳定性"))
+            .andExpect(jsonPath("$.data[0].appliedWeights.semanticWeight").value(60.00))
+            .andExpect(jsonPath("$.data[0].comparisonToPrevious.summary").value(org.hamcrest.Matchers.containsString("主要调权变化为语义上调 30%")))
+            .andExpect(jsonPath("$.data[0].comparisonToPrevious.weightChanges.length()").value(3))
+            .andExpect(jsonPath("$.data[0].comparisonToPrevious.weightChanges[0].dimension").value("semanticWeight"))
+            .andExpect(jsonPath("$.data[0].comparisonToPrevious.weightChanges[0].deltaWeight").value(30.00))
+            .andExpect(jsonPath("$.data[0].comparisonToPrevious.topCandidateChange.changed").value(false))
+            .andExpect(jsonPath("$.data[0].comparisonToPrevious.topCandidateChange.scoreDelta").isNumber)
+            .andExpect(jsonPath("$.data[0].topRecommendations[0].candidateName").value("Timeline Candidate"))
+            .andExpect(jsonPath("$.data[1].versionNumber").value(1))
+            .andExpect(jsonPath("$.data[1].evaluationNote").doesNotExist())
+
+        val auditEvent = accessAuditEventRepository.findAll().single {
+            it.actionType == AccessAuditActionType.JOB_EVALUATION_HISTORY_VIEWED
+        }
+        assertEquals("history_hr", auditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, auditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.JOB, auditEvent.targetType)
+        assertEquals(requireNotNull(job.id), auditEvent.targetId)
     }
 
     @Test
@@ -490,11 +689,12 @@ class JobControllerTest {
                 title = "Semantic Search Engineer",
                 description = "Need vector retrieval, Python, ranking and semantic search experience",
                 requirements = mapOf(
-                    "skills" to listOf("Python", "Ranking", "Vector"),
+                    "skills" to listOf("FastAPI", "Recommendation Systems", "Vector Search"),
                     "experienceYears" to 3,
                     "educationKeywords" to listOf("computer", "science"),
                 ),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
@@ -524,8 +724,10 @@ class JobControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.appliedWeights.skillWeight").value(20.00))
             .andExpect(jsonPath("$.data.appliedWeights.semanticWeight").value(60.00))
-            .andExpect(jsonPath("$.data.recommendations[0].xaiReasoning").value(org.hamcrest.Matchers.containsString("skills 20.00%")))
-            .andExpect(jsonPath("$.data.recommendations[0].xaiReasoning").value(org.hamcrest.Matchers.containsString("semantic 60.00%")))
+            .andExpect(jsonPath("$.data.recommendations[0].scoreBreakdown.skillScore").isNumber)
+            .andExpect(jsonPath("$.data.recommendations[0].scoreBreakdown.experienceScore").isNumber)
+            .andExpect(jsonPath("$.data.recommendations[0].xaiReasoning").value(org.hamcrest.Matchers.containsString("Semantic Search Engineer")))
+            .andExpect(jsonPath("$.data.recommendations[0].xaiReasoning").value(org.hamcrest.Matchers.containsString("语义相似度")))
     }
 
     @Test
@@ -537,8 +739,9 @@ class JobControllerTest {
             Job(
                 title = "Backend Engineer",
                 description = "Build APIs",
-                requirements = mapOf("skills" to listOf("Kotlin")),
+                requirements = mapOf("skills" to listOf("FastAPI")),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
@@ -558,6 +761,9 @@ class JobControllerTest {
                 ),
         )
             .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("INVALID_EVALUATION_WEIGHTS"))
+            .andExpect(jsonPath("$.retryable").value(true))
+            .andExpect(jsonPath("$.userHint").value("请至少保留一个大于 0 的评估权重后重试。"))
     }
 
     @Test
@@ -569,12 +775,13 @@ class JobControllerTest {
             Job(
                 title = "Platform Engineer",
                 description = "Need Kotlin PostgreSQL system design skills",
-                requirements = mapOf("skills" to listOf("Kotlin", "PostgreSQL")),
+                requirements = mapOf("skills" to listOf("FastAPI", "Flyway")),
                 createdBy = owner,
+                organization = requireNotNull(owner.organization),
             ),
         )
 
-        createParsedResume(
+        val resume = createParsedResume(
             fullName = "Carol Wu",
             email = "carol@example.com",
             skills = listOf("Kotlin", "PostgreSQL", "Docker"),
@@ -594,11 +801,45 @@ class JobControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].scoreBreakdown.educationScore").isNumber)
+            .andExpect(jsonPath("$.data[0].scoreBreakdown.semanticScore").isNumber)
             .andExpect(jsonPath("$.data[0].candidate.basicInfo.fullName").value("Carol Wu"))
             .andExpect(jsonPath("$.data[0].candidate.skills[0].name").value("Kotlin"))
             .andExpect(jsonPath("$.data[0].xaiReport.summary").exists())
             .andExpect(jsonPath("$.data[0].candidate.parsedData.basicInfo.email").value("carol@example.com"))
             .andExpect(jsonPath("$.data[0].candidate.radarScores.problemSolving").value(8))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(5, accessAuditEvents.size)
+
+        val jobAuditEvent = accessAuditEvents.single { it.actionType == AccessAuditActionType.JOB_RECOMMENDATIONS_VIEWED }
+        assertEquals("reviewer", jobAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, jobAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.JOB, jobAuditEvent.targetType)
+        assertEquals(requireNotNull(job.id), jobAuditEvent.targetId)
+
+        val recommendationDetailAuditEvent = accessAuditEvents.single {
+            it.actionType == AccessAuditActionType.RECOMMENDATION_CANDIDATE_DETAILS_VIEWED
+        }
+        assertEquals("reviewer", recommendationDetailAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, recommendationDetailAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.RESUME, recommendationDetailAuditEvent.targetType)
+        assertEquals(requireNotNull(resume.id), recommendationDetailAuditEvent.targetId)
+        assertEquals(null, recommendationDetailAuditEvent.sensitiveField)
+
+        val sensitiveFieldEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(3, sensitiveFieldEvents.size)
+        assertEquals(setOf(
+            AccessAuditSensitiveField.CONTACT_INFO,
+            AccessAuditSensitiveField.BASIC_INFO_EMAIL,
+            AccessAuditSensitiveField.BASIC_INFO_PHONE,
+        ), sensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet())
+        sensitiveFieldEvents.forEach { event ->
+            assertEquals("reviewer", event.actorUsername)
+            assertEquals(AccessAuditActorRole.HR, event.actorRole)
+            assertEquals(AccessAuditTargetType.RESUME, event.targetType)
+            assertEquals(requireNotNull(resume.id), event.targetId)
+        }
     }
 
     private fun obtainAccessToken(username: String, email: String, role: UserRole = UserRole.HR): String {
@@ -608,6 +849,7 @@ class JobControllerTest {
                 passwordHash = passwordEncoder.encode("Password123"),
                 email = email,
                 role = role,
+                organization = if (role == UserRole.HR) ensureOrganization(username) else null,
             ),
         )
 
@@ -628,6 +870,20 @@ class JobControllerTest {
     private fun extractId(json: String): String {
         val root: JsonNode = objectMapper.readTree(json)
         return root.path("data").path("id").asText()
+    }
+
+    private fun ensureOrganization(seed: String): Organization {
+        val normalizedName = "Org-$seed"
+        return organizationRepository.findByNameIgnoreCase(normalizedName).orElseGet {
+            organizationRepository.save(
+                Organization(
+                    name = normalizedName,
+                    tokenHash = passwordEncoder.encode("token-$seed"),
+                    tokenPreview = "org_****${seed.takeLast(4).padStart(4, '0')}",
+                    enabled = true,
+                ),
+            )
+        }
     }
 
     private fun createParsedResume(

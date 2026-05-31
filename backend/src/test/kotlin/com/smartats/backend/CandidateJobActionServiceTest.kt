@@ -7,6 +7,7 @@ import com.smartats.backend.domain.JobFavorite
 import com.smartats.backend.domain.JobFavoriteStatus
 import com.smartats.backend.domain.JobIgnore
 import com.smartats.backend.domain.JobIgnoreStatus
+import com.smartats.backend.domain.Organization
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
 import com.smartats.backend.dto.candidate.CandidateTimelineAction
@@ -69,10 +70,17 @@ class CandidateJobActionServiceTest {
             email = "acme_hr@example.com",
             role = UserRole.HR,
         )
+        val organization = Organization(
+            id = UUID.randomUUID(),
+            name = "Acme Org",
+            tokenHash = "hash",
+            tokenPreview = "org_****demo",
+            enabled = true,
+        )
 
-        val appliedJob = Job(id = UUID.randomUUID(), title = "Backend Engineer", description = "", createdBy = hrOwner)
-        val favoriteJob = Job(id = UUID.randomUUID(), title = "Platform Engineer", description = "", createdBy = hrOwner)
-        val ignoredJob = Job(id = UUID.randomUUID(), title = "Frontend Engineer", description = "", createdBy = hrOwner)
+        val appliedJob = Job(id = UUID.randomUUID(), title = "Backend Engineer", description = "", createdBy = hrOwner, organization = organization)
+        val favoriteJob = Job(id = UUID.randomUUID(), title = "Platform Engineer", description = "", createdBy = hrOwner, organization = organization)
+        val ignoredJob = Job(id = UUID.randomUUID(), title = "Frontend Engineer", description = "", createdBy = hrOwner, organization = organization)
 
         val application = JobApplication(
             id = UUID.randomUUID(),

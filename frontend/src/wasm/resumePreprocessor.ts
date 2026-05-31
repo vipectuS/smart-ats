@@ -62,9 +62,31 @@ const sanitizeFileName = (fileName: string) => fileName
   .replace(/-+/g, '-')
   .slice(0, 60);
 
+const fallbackFingerprint = (data: Uint8Array) => {
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+
+  for (const value of data) {
+    hashA ^= value;
+    hashA = Math.imul(hashA, 0x01000193);
+    hashB ^= value;
+    hashB = Math.imul(hashB, 0x85ebca6b);
+  }
+
+  const partA = (hashA >>> 0).toString(16).padStart(8, '0');
+  const partB = (hashB >>> 0).toString(16).padStart(8, '0');
+  return `${partA}${partB}`;
+};
+
 const shortFingerprint = async (input: string) => {
   const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest('SHA-256', data);
+  const subtleCrypto = globalThis.crypto?.subtle;
+
+  if (!subtleCrypto) {
+    return fallbackFingerprint(data).slice(0, 16);
+  }
+
+  const digest = await subtleCrypto.digest('SHA-256', data);
   return Array.from(new Uint8Array(digest))
     .slice(0, 8)
     .map((value) => value.toString(16).padStart(2, '0'))
@@ -106,6 +128,49 @@ const buildTextPreview = (pageText: string, maxTextPreviewLength: number) => pag
     .trim()
     .slice(0, maxTextPreviewLength);
 
+const describeError = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  return 'unknown error';
+};
+
+const buildFallbackResult = async (
+  file: File,
+  sanitizedName: string,
+  totalPages: number,
+  warnings: string[],
+  extractedTextPreview: string,
+): Promise<BrowserResumePreprocessResult> => {
+  const fingerprint = await shortFingerprint([
+    file.name,
+    String(file.size),
+    String(file.lastModified),
+    String(totalPages),
+    extractedTextPreview,
+    warnings.join('|'),
+  ].join(':'));
+
+  return {
+    engine: 'pdfium-wasm-renderer',
+    mode: 'pdf-to-page-previews',
+    sourceFileName: file.name,
+    sourceMimeType: file.type || 'application/pdf',
+    sourceFileSize: file.size,
+    derivedReference: `browser-pdf-preview://${fingerprint}/${totalPages}p/${sanitizedName}`,
+    pageCountEstimate: totalPages,
+    generatedAt: new Date().toISOString(),
+    warnings,
+    pagePreviews: [],
+    extractedTextPreview,
+  };
+};
+
 export const preprocessResumePdfInBrowser = async (
   file: File,
   options?: BrowserResumePreprocessOptions,
@@ -116,6 +181,11 @@ export const preprocessResumePdfInBrowser = async (
 
   if (!looksLikePdf) {
     throw new Error('当前仅支持 PDF 简历作为浏览器端预处理输入。');
+  }
+  
+  const MAX_WASM_FILE_SIZE = 15 * 1024 * 1024; // 15MB 物理熔断
+  if (file.size > MAX_WASM_FILE_SIZE) {
+    throw new Error(`文件大小 (${(file.size / 1024 / 1024).toFixed(1)}MB) 超出浏览器 Wasm 层安全处理阈值 (15MB)，已断路保护。请流转为后端服务器解析。`);
   }
 
   emitProgress(options, {
@@ -131,10 +201,17 @@ export const preprocessResumePdfInBrowser = async (
 
   const library = await getPdfiumLibrary();
   const document = await library.loadDocument(new Uint8Array(fileBytes));
+  const sanitizedName = sanitizeFileName(file.name || 'resume.pdf');
 
   try {
     const totalPages = document.getPageCount();
-    const sanitizedName = sanitizeFileName(file.name || 'resume.pdf');
+    
+    // 页数软熔断：超过 15 页的超长跨页 PDF 在浏览器逐页 render 时极易发生内存溢出
+    const MAX_SAFE_PAGES = 15;
+    if (totalPages > MAX_SAFE_PAGES) {
+      throw new Error(`检测到该 PDF 包含 ${totalPages} 页。为保护浏览器内存 (OOM 熔断)，已阻断 Wasm 预处理，请直接交由后端云端节点解析。`);
+    }
+    
     const pagePreviews: BrowserResumePagePreview[] = [];
     const warnings: string[] = [];
 
@@ -240,7 +317,29 @@ export const preprocessResumePdfInBrowser = async (
     return result;
   } catch (error) {
     console.error('Failed to preprocess PDF in browser', error);
-    throw new Error('浏览器端 PDFium Wasm 渲染失败，请确认文件未损坏后重试。');
+    const fallbackPageCount = (() => {
+      try {
+        return document.getPageCount();
+      } catch {
+        return 1;
+      }
+    })();
+    const fallbackWarnings = [
+      'PDF 文件已读取成功，但浏览器端 PDFium 页面渲染未完成，已降级为仅上传轻量引用与元数据。',
+      `PDFium 渲染失败原因：${describeError(error)}`,
+      '后续解析将无法使用本地页预览图，效果会更依赖后端引用、外链信息或模型兜底能力。',
+    ];
+
+    emitProgress(options, {
+      stage: 'done',
+      completedPages: 0,
+      totalPages: fallbackPageCount,
+      percentage: 100,
+      currentPage: null,
+      message: 'PDF 已以降级模式完成预处理，可继续上传轻量引用。',
+    });
+
+    return buildFallbackResult(file, sanitizedName, fallbackPageCount, fallbackWarnings, '');
   } finally {
     document.destroy();
   }

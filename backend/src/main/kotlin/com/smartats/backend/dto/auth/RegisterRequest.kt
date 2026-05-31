@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
+import java.util.UUID
 
 data class RegisterRequest(
     @field:NotBlank(message = "Username is required")
@@ -24,4 +25,8 @@ data class RegisterRequest(
     val password: String,
 
     val role: UserRole = UserRole.CANDIDATE,
+
+    val organizationId: UUID? = null,
+
+    val organizationToken: String? = null,
 )

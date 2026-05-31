@@ -20,6 +20,7 @@ class AuthService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
+    private val organizationService: OrganizationService,
 ) {
 
     @Transactional
@@ -34,11 +35,18 @@ class AuthService(
             throw DuplicateResourceException("Email already exists")
         }
 
+        val organization = if (request.role == UserRole.HR) {
+            organizationService.resolveOrganizationForHrRegistration(request.organizationId, request.organizationToken)
+        } else {
+            null
+        }
+
         val user = User(
             username = request.username,
             passwordHash = passwordEncoder.encode(request.password),
             email = request.email,
             role = request.role,
+            organization = organization,
         )
 
         return UserResponse.from(userRepository.save(user))
@@ -53,9 +61,10 @@ class AuthService(
             throw InvalidCredentialsException("Invalid username or password")
         }
 
+        val rememberMe = request.rememberMe
         return AuthResponse(
-            accessToken = jwtService.generateToken(user),
-            expiresIn = jwtService.getExpirationMinutes() * 60,
+            accessToken = jwtService.generateToken(user, rememberMe = rememberMe),
+            expiresIn = jwtService.getExpirationSeconds(rememberMe),
             user = UserResponse.from(user),
         )
     }

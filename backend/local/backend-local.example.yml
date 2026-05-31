@@ -3,6 +3,20 @@ spring:
     password: change-me-db-password
 
 app:
+  governance:
+    data-retention:
+      enabled: false
+      access-audit-retention-days: 365
+      parse-failure-review-retention-days: 365
+    security-headers:
+      hsts-enabled: false
+    transport-security:
+      tls-termination-expected: false
+      public-base-url: https://smart-ats.example.com
+    secret-rotation:
+      max-secret-age-days: 90
+      jwt-secret-last-rotated-on: 2026-05-15
+      internal-callback-key-last-rotated-on: 2026-05-15
   security:
     jwt:
       secret: change-me-jwt-secret-at-least-32-bytes

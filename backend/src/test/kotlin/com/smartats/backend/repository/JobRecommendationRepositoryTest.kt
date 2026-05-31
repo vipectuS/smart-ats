@@ -5,6 +5,8 @@ import com.smartats.backend.domain.JobRecommendation
 import com.smartats.backend.domain.Resume
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
+import com.smartats.backend.repository.OrganizationRepository
+import com.smartats.backend.service.OrganizationService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,6 +25,9 @@ class JobRecommendationRepositoryTest {
 
     @Autowired
     private lateinit var jobRepository: JobRepository
+
+    @Autowired
+    private lateinit var organizationRepository: OrganizationRepository
 
     @Autowired
     private lateinit var resumeRepository: ResumeRepository
@@ -58,6 +63,7 @@ class JobRecommendationRepositoryTest {
                 description = "Own the hiring platform backbone",
                 requirements = mapOf("skills" to listOf("Kotlin", "PostgreSQL")),
                 createdBy = creator,
+                organization = organizationRepository.findById(OrganizationService.LEGACY_ORGANIZATION_ID).orElseThrow(),
             ),
         )
 
@@ -89,7 +95,11 @@ class JobRecommendationRepositoryTest {
                 job = job,
                 resume = resume,
                 matchScore = BigDecimal("87.50"),
+                semanticScore = BigDecimal("83.20"),
                 xaiReasoning = "High technical alignment and solid communication score",
+                suitabilityReport = "候选人与岗位整体匹配度较高，建议继续补强 PostgreSQL 深度。",
+                matchedSkills = listOf("Kotlin"),
+                missingSkills = listOf("PostgreSQL"),
                 xaiReport = mapOf(
                     "headline" to "Strong fit",
                     "fitBand" to "HIGH",

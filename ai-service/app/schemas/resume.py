@@ -103,4 +103,5 @@ class ParsedResultPayload(CamelModel):
 
 class ParseFailurePayload(CamelModel):
     status: Literal["PARSE_FAILED"] = "PARSE_FAILED"
+    failure_code: str | None = None
     failure_reason: str = Field(min_length=1)

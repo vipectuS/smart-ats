@@ -70,8 +70,8 @@ class JsonApiClient:
         return parsed
 
 
-def login(base_url: str, username: str, password: str) -> JsonApiClient:
-    client = JsonApiClient(base_url)
+def login(base_url: str, username: str, password: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> JsonApiClient:
+    client = JsonApiClient(base_url, timeout=timeout)
     data = client.post(
         "/api/v1/auth/login",
         {
@@ -88,22 +88,30 @@ def ensure_user(
     email: str,
     password: str,
     role: str,
+    organization_id: str | None = None,
+    organization_token: str | None = None,
+    timeout: int = DEFAULT_TIMEOUT_SECONDS,
 ) -> tuple[JsonApiClient, bool]:
-    client = JsonApiClient(base_url)
+    client = JsonApiClient(base_url, timeout=timeout)
     created = False
+    payload = {
+        "username": username,
+        "email": email,
+        "password": password,
+        "role": role,
+    }
+    if organization_id is not None:
+        payload["organizationId"] = organization_id
+    if organization_token is not None:
+        payload["organizationToken"] = organization_token
     try:
         client.post(
             "/api/v1/auth/register",
-            {
-                "username": username,
-                "email": email,
-                "password": password,
-                "role": role,
-            },
+            payload,
         )
         created = True
     except ApiError as exc:
         if exc.status != 409:
             raise
 
-    return login(base_url, username, password), created
+    return login(base_url, username, password, timeout=timeout), created

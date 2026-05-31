@@ -1,5 +1,7 @@
 package com.smartats.backend.controller
 
+import com.smartats.backend.domain.AccessAuditActionType
+import com.smartats.backend.domain.AccessAuditTargetType
 import com.smartats.backend.dto.ApiResponse
 import com.smartats.backend.dto.PageResponse
 import com.smartats.backend.dto.candidate.CandidateJobActionResponse
@@ -7,10 +9,12 @@ import com.smartats.backend.dto.job.CreateJobRequest
 import com.smartats.backend.dto.job.EvaluationRequestWeightsDTO
 import com.smartats.backend.dto.job.JobApplicationReviewItemResponse
 import com.smartats.backend.dto.job.JobEvaluationResponse
+import com.smartats.backend.dto.job.JobEvaluationVersionResponse
 import com.smartats.backend.dto.job.JobRecommendationResponse
 import com.smartats.backend.dto.job.JobResponse
 import com.smartats.backend.dto.job.UpdateJobApplicationReviewRequest
 import com.smartats.backend.dto.job.UpdateJobRequest
+import com.smartats.backend.service.AccessAuditService
 import com.smartats.backend.service.CandidateJobActionService
 import com.smartats.backend.service.JobService
 import com.smartats.backend.service.RecommendationService
@@ -18,6 +22,7 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -36,6 +41,7 @@ class JobController(
     private val jobService: JobService,
     private val recommendationService: RecommendationService,
     private val candidateJobActionService: CandidateJobActionService,
+    private val accessAuditService: AccessAuditService,
 ) {
 
     @PostMapping
@@ -62,16 +68,20 @@ class JobController(
 
     @GetMapping
     fun listJobs(
+        principal: Principal,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int,
     ): ApiResponse<PageResponse<JobResponse>> {
-        val response = jobService.listJobs(page = page, size = size)
+        val response = jobService.listJobs(username = principal.name, page = page, size = size)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
     @GetMapping("/{jobId}")
-    fun getJob(@PathVariable jobId: UUID): ApiResponse<JobResponse> {
-        val response = jobService.getJob(jobId)
+    fun getJob(
+        @PathVariable jobId: UUID,
+        principal: Principal,
+    ): ApiResponse<JobResponse> {
+        val response = jobService.getJob(principal.name, jobId)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
@@ -80,8 +90,11 @@ class JobController(
     fun listJobApplications(
         @PathVariable jobId: UUID,
         principal: Principal,
+        authentication: Authentication,
     ): ApiResponse<List<JobApplicationReviewItemResponse>> {
         val response = jobService.listActiveApplications(principal.name, jobId)
+        accessAuditService.recordAccess(authentication, AccessAuditActionType.JOB_APPLICATIONS_VIEWED, AccessAuditTargetType.JOB, jobId)
+        accessAuditService.recordJobApplicationSensitiveFieldAccess(authentication, response)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
@@ -91,16 +104,47 @@ class JobController(
         @PathVariable jobId: UUID,
         @PathVariable applicationId: UUID,
         principal: Principal,
+        authentication: Authentication,
         @Valid @RequestBody request: UpdateJobApplicationReviewRequest,
     ): ApiResponse<JobApplicationReviewItemResponse> {
         val response = jobService.reviewApplication(principal.name, jobId, applicationId, request)
+        accessAuditService.recordJobApplicationSensitiveFieldAccess(authentication, listOf(response))
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Application review updated")
     }
 
     @GetMapping("/{jobId}/recommendations")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    fun listRecommendations(@PathVariable jobId: UUID): ApiResponse<List<JobRecommendationResponse>> {
+    fun listRecommendations(
+        @PathVariable jobId: UUID,
+        principal: Principal,
+        authentication: Authentication,
+    ): ApiResponse<List<JobRecommendationResponse>> {
+        jobService.getJob(principal.name, jobId)
         val response = recommendationService.listRecommendationsForJob(jobId)
+        accessAuditService.recordAccess(authentication, AccessAuditActionType.JOB_RECOMMENDATIONS_VIEWED, AccessAuditTargetType.JOB, jobId)
+        accessAuditService.recordRecommendationCandidateDetailsAccess(authentication, response.map(JobRecommendationResponse::resumeId))
+        response.forEach { recommendation ->
+            accessAuditService.recordResumeSensitiveFieldAccess(
+                authentication,
+                recommendation.resumeId,
+                recommendation.candidate.contactInfo,
+                recommendation.candidate.parsedData,
+            )
+        }
+        return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
+    }
+
+    @GetMapping("/{jobId}/evaluations")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    fun listEvaluationHistory(
+        @PathVariable jobId: UUID,
+        @RequestParam(defaultValue = "6") limit: Int,
+        principal: Principal,
+        authentication: Authentication,
+    ): ApiResponse<List<JobEvaluationVersionResponse>> {
+        jobService.getJob(principal.name, jobId)
+        val response = recommendationService.listEvaluationHistoryForJob(jobId, limit)
+        accessAuditService.recordAccess(authentication, AccessAuditActionType.JOB_EVALUATION_HISTORY_VIEWED, AccessAuditTargetType.JOB, jobId)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
@@ -108,9 +152,11 @@ class JobController(
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     fun evaluateJob(
         @PathVariable jobId: UUID,
+        principal: Principal,
         @Valid @RequestBody(required = false) weights: EvaluationRequestWeightsDTO?,
     ): ApiResponse<JobEvaluationResponse> {
-        val response = recommendationService.generateRecommendationsForJob(jobId, weights)
+        jobService.getJob(principal.name, jobId)
+        val response = recommendationService.generateRecommendationsForJob(jobId, weights, principal.name, true)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Recommendations generated")
     }
 

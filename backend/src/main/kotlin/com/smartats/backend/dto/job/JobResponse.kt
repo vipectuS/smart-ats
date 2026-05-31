@@ -2,6 +2,7 @@ package com.smartats.backend.dto.job
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.smartats.backend.domain.Job
+import com.smartats.backend.dto.organization.OrganizationRefResponse
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -11,6 +12,7 @@ data class JobResponse(
     val title: String,
     val description: String,
     val requirements: Map<String, Any>?,
+    val organization: OrganizationRefResponse,
     val createdBy: JobUserSummary?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
@@ -22,6 +24,7 @@ data class JobResponse(
                 title = job.title,
                 description = job.description,
                 requirements = job.requirements,
+                organization = OrganizationRefResponse.from(job.organization),
                 createdBy = job.createdBy?.let {
                     JobUserSummary(
                         id = requireNotNull(it.id),

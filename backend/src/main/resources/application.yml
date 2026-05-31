@@ -30,6 +30,30 @@ spring:
         enabled: false
 
 app:
+  governance:
+    data-retention:
+      enabled: ${GOVERNANCE_DATA_RETENTION_ENABLED:false}
+      purge-cron: ${GOVERNANCE_DATA_RETENTION_PURGE_CRON:0 0 3 * * *}
+      access-audit-retention-days: ${GOVERNANCE_ACCESS_AUDIT_RETENTION_DAYS:365}
+      parse-failure-review-retention-days: ${GOVERNANCE_PARSE_FAILURE_REVIEW_RETENTION_DAYS:365}
+    security-headers:
+      enabled: ${GOVERNANCE_SECURITY_HEADERS_ENABLED:true}
+      hsts-enabled: ${GOVERNANCE_SECURITY_HEADERS_HSTS_ENABLED:false}
+      hsts-max-age-seconds: ${GOVERNANCE_SECURITY_HEADERS_HSTS_MAX_AGE_SECONDS:31536000}
+      include-sub-domains: ${GOVERNANCE_SECURITY_HEADERS_INCLUDE_SUB_DOMAINS:true}
+      content-type-options-enabled: ${GOVERNANCE_SECURITY_HEADERS_CONTENT_TYPE_OPTIONS_ENABLED:true}
+      frame-options-mode: ${GOVERNANCE_SECURITY_HEADERS_FRAME_OPTIONS_MODE:DENY}
+      referrer-policy: ${GOVERNANCE_SECURITY_HEADERS_REFERRER_POLICY:strict-origin-when-cross-origin}
+    transport-security:
+      tls-termination-expected: ${GOVERNANCE_TLS_TERMINATION_EXPECTED:false}
+      forwarded-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
+      public-base-url: ${PUBLIC_BASE_URL:}
+    secret-rotation:
+      enabled: ${GOVERNANCE_SECRET_ROTATION_ENABLED:true}
+      max-secret-age-days: ${GOVERNANCE_SECRET_ROTATION_MAX_SECRET_AGE_DAYS:90}
+      fail-startup-on-blocking-findings: ${GOVERNANCE_SECRET_ROTATION_FAIL_STARTUP_ON_BLOCKING_FINDINGS:false}
+      jwt-secret-last-rotated-on: ${GOVERNANCE_JWT_SECRET_LAST_ROTATED_ON:}
+      internal-callback-key-last-rotated-on: ${GOVERNANCE_INTERNAL_CALLBACK_KEY_LAST_ROTATED_ON:}
   security:
     jwt:
       secret: ${JWT_SECRET:change-me-jwt-secret-at-least-32-bytes}
@@ -57,4 +81,5 @@ app:
 
 server:
   port: 18080
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
 

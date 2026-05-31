@@ -1,5 +1,6 @@
 package com.smartats.backend.repository
 
+import com.smartats.backend.domain.AdminParseFailureReviewStatus
 import com.smartats.backend.domain.Resume
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
@@ -15,13 +16,24 @@ import java.util.UUID
 interface ResumeRepository : JpaRepository<Resume, UUID> {
 	fun findTopByOwnerUserIdOrderByUpdatedAtDesc(userId: UUID): Resume?
 
+	fun findByOwnerUserIdOrderByUpdatedAtDesc(userId: UUID): List<Resume>
+
+	fun findByIdAndOwnerUserId(id: UUID, ownerUserId: UUID): Resume?
+
 	fun findTopByOwnerUserIdAndStatusOrderByUpdatedAtDesc(userId: UUID, status: String): Resume?
 
 	fun findByStatus(status: String): List<Resume>
 
 	fun findByStatusOrderByUpdatedAtDesc(status: String, pageable: Pageable): List<Resume>
 
+	fun findByStatusAndAdminReviewStatusOrderByUpdatedAtDesc(
+		status: String,
+		adminReviewStatus: AdminParseFailureReviewStatus,
+		pageable: Pageable,
+	): List<Resume>
+
 	fun findByStatusAndUpdatedAtGreaterThanEqual(status: String, updatedAt: LocalDateTime): List<Resume>
+        fun findByStatusAndUpdatedAtBefore(status: String, updatedAt: LocalDateTime): List<Resume>
 
 	fun countByCreatedAtGreaterThanEqual(createdAt: LocalDateTime): Long
 
@@ -78,8 +90,9 @@ interface ResumeRepository : JpaRepository<Resume, UUID> {
 			WHERE r.status = 'PARSED'
 			  AND r.embedding IS NOT NULL
 			ORDER BY r.embedding <=> CAST(:embedding AS vector) ASC
+                        LIMIT :limit
 		""",
 		nativeQuery = true,
 	)
-	fun findSemanticMatches(@Param("embedding") embedding: String): List<ResumeSemanticMatchProjection>
+	fun findSemanticMatches(@Param("embedding") embedding: String, @Param("limit") limit: Int = 100): List<ResumeSemanticMatchProjection>
 }

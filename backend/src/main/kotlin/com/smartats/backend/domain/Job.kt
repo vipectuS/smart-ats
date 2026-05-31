@@ -33,6 +33,10 @@ class Job(
     @JoinColumn(name = "created_by")
     var createdBy: User? = null,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false)
+    var organization: Organization,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
 

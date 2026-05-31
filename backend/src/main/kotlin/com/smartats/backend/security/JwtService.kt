@@ -16,9 +16,10 @@ class JwtService(
     private val jwtProperties: JwtProperties,
 ) {
 
-    fun generateToken(user: User): String {
+    fun generateToken(user: User, rememberMe: Boolean = false): String {
         val now = Instant.now()
-        val expiry = now.plusSeconds(jwtProperties.expirationMinutes * 60)
+        val expirationSeconds = getExpirationSeconds(rememberMe)
+        val expiry = now.plusSeconds(expirationSeconds)
 
         return Jwts.builder()
             .subject(user.username)
@@ -36,7 +37,13 @@ class JwtService(
         return username == userDetails.username && !isTokenExpired(token)
     }
 
-    fun getExpirationMinutes(): Long = jwtProperties.expirationMinutes
+    fun getExpirationSeconds(rememberMe: Boolean = false): Long {
+        return if (rememberMe) {
+            7 * 24 * 60 * 60L // 7 days in seconds
+        } else {
+            jwtProperties.expirationMinutes * 60
+        }
+    }
 
     private fun isTokenExpired(token: String): Boolean = extractAllClaims(token).expiration.before(Date())
 

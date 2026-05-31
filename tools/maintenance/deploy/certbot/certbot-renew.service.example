@@ -1,0 +1,13 @@
+[Unit]
+Description=Renew Smart ATS TLS certificates with Certbot
+Documentation=https://certbot.eff.org/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/smart-ats/certbot-renew.env
+ExecStart=/usr/bin/certbot renew --quiet --deploy-hook ${CERTBOT_POST_HOOK}
+
+[Install]
+WantedBy=multi-user.target

@@ -39,6 +39,19 @@ class Resume(
     @Column(name = "parse_failure_reason", columnDefinition = "TEXT")
     var parseFailureReason: String? = null,
 
+    @Column(name = "admin_review_note", columnDefinition = "TEXT")
+    var adminReviewNote: String? = null,
+
+    @Column(name = "admin_reviewed_by")
+    var adminReviewedBy: String? = null,
+
+    @Column(name = "admin_reviewed_at")
+    var adminReviewedAt: LocalDateTime? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "admin_review_status", nullable = false, length = 64)
+    var adminReviewStatus: AdminParseFailureReviewStatus = AdminParseFailureReviewStatus.UNREVIEWED,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     var ownerUser: User? = null,

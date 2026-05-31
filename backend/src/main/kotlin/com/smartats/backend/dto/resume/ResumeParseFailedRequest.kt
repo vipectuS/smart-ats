@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Size
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ResumeParseFailedRequest(
+    @field:Size(max = 64, message = "failureCode must be at most 64 characters")
+    val failureCode: String? = null,
     @field:Size(max = 2000, message = "reason must be at most 2000 characters")
     val reason: String? = null,
 )

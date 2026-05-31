@@ -20,8 +20,7 @@ const router = createRouter({
     {
       path: '/register',
       name: 'register',
-      component: () => import('../views/RegisterView.vue'),
-      meta: { requiresAuth: false }
+      redirect: '/login?mode=register'
     },
     {
       path: '/',

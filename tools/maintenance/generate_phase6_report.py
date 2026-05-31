@@ -22,9 +22,32 @@ def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def write_json_atomic(payload: dict[str, Any], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp_path.replace(output_path)
+
+
+def print_summary(report: dict[str, Any], output_path: Path) -> None:
+    dataset_summary = report["datasetScopedSummary"]
+    candidate_ranking = report["candidateRanking"]
+    print(f"Phase 6 report written to {output_path}")
+    print(
+        "Dataset resumes parsed: "
+        f"{dataset_summary['parsedResumeCount']}/{dataset_summary['resumeCount']}"
+    )
+    print(
+        "Candidate ranking hit rates: "
+        f"top1={candidate_ranking['top1HitRate']:.4f}, top3={candidate_ranking['top3HitRate']:.4f}"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a reproducible Phase 6 evidence report from seeded demo data.")
     parser.add_argument("--base-url", default=os.environ.get("SMART_ATS_BASE_URL", "http://127.0.0.1:18080"))
+    parser.add_argument("--timeout-seconds", type=int, default=90)
+    parser.add_argument("--print-json", action="store_true")
     parser.add_argument(
         "--output",
         default=str(OUTPUT_DIR / "phase6_report.json"),
@@ -40,6 +63,7 @@ def main() -> None:
         args.base_url,
         os.environ.get("SMART_ATS_ADMIN_USERNAME", "admin"),
         os.environ.get("SMART_ATS_ADMIN_PASSWORD", "admin"),
+        timeout=args.timeout_seconds,
     )
 
     overview = admin_client.get("/api/admin/overview")
@@ -63,7 +87,7 @@ def main() -> None:
 
     for sample in manifest:
         username = f"demo_{sample['sampleId'].lower()}"
-        candidate_client = login(args.base_url, username, DEFAULT_PASSWORD)
+        candidate_client = login(args.base_url, username, DEFAULT_PASSWORD, timeout=args.timeout_seconds)
         try:
             match_response = candidate_client.post("/api/candidate/match-jobs")
             recommendations = match_response.get("recommendations", [])
@@ -149,9 +173,11 @@ def main() -> None:
     }
 
     output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    write_json_atomic(report, output_path)
+    if args.print_json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print_summary(report, output_path)
 
 
 if __name__ == "__main__":

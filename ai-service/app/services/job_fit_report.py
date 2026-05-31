@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from litellm import acompletion
 from pydantic import ValidationError
 
 from app.config import Settings
 from app.schemas.job_fit import JobFitReportRequest, JobFitReportResponse
+from app.services.litellm_resilience import (
+    LiteLLMCircuitOpenError,
+    LiteLLMRetryExhaustedError,
+    ResilientLiteLLMClient,
+    get_shared_litellm_client,
+)
 
 
 class JobFitReportGenerationError(RuntimeError):
@@ -14,11 +19,18 @@ class JobFitReportGenerationError(RuntimeError):
 
 
 class JobFitReportService:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, completion_client: ResilientLiteLLMClient | None = None) -> None:
         self.settings = settings
+        self.completion_client = completion_client or get_shared_litellm_client()
 
     async def generate(self, request: JobFitReportRequest) -> JobFitReportResponse:
-        response = await acompletion(**self.build_request(request))
+        try:
+            response = await self.completion_client.complete(
+                operation="job_fit_report",
+                **self.build_request(request),
+            )
+        except (LiteLLMRetryExhaustedError, LiteLLMCircuitOpenError) as exc:
+            raise JobFitReportGenerationError(str(exc)) from exc
         content = self._extract_content(response)
         try:
             return JobFitReportResponse.model_validate_json(content)
@@ -26,26 +38,33 @@ class JobFitReportService:
             raise JobFitReportGenerationError("LiteLLM returned invalid job fit report JSON") from exc
 
     def build_request(self, request: JobFitReportRequest) -> dict[str, Any]:
-        audience_instruction = (
-            "Address the candidate directly in second person and focus on job suitability plus skill improvement advice."
-            if request.audience == "candidate"
-            else "Address the HR reviewer and summarize candidate-job fit objectively."
-        )
+        if request.audience == "candidate":
+            audience_instruction = "Write for the candidate, in Simplified Chinese, focusing on job suitability and skill improvement advice."
+        elif request.audience == "hr":
+            audience_instruction = "Write for the HR reviewer, in Simplified Chinese, summarizing candidate-job fit objectively."
+        else:
+            audience_instruction = (
+                "Write a shared fit report in Simplified Chinese that can be shown to both the candidate and HR. "
+                "Keep the tone neutral and avoid second-person phrasing."
+            )
         return {
             "model": self.settings.job_fit_report_model,
+            "fallback_models": self.settings.job_fit_report_fallback_models,
             "temperature": 0,
+            **self.settings.litellm_request_options(),
             "messages": [
                 {
                     "role": "system",
                     "content": (
                         "You generate structured job fit reports for an ATS. Return only valid JSON matching the schema. "
+                        "All human-readable string fields must be written in Simplified Chinese. "
                         f"{audience_instruction}"
                     ),
                 },
                 {
                     "role": "user",
                     "content": (
-                        "Generate a structured job fit report from this evaluation payload: "
+                        "Generate a structured job fit report from this evaluation payload. Every returned string field must be Simplified Chinese: "
                         f"{request.model_dump_json(by_alias=True)}"
                     ),
                 },

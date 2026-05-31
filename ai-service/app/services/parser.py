@@ -9,7 +9,6 @@ from pathlib import Path
 import re
 from typing import Any
 
-from litellm import acompletion
 from pydantic import ValidationError
 
 from app.config import Settings
@@ -24,6 +23,13 @@ from app.schemas.resume import (
     WorkExperience,
 )
 from app.services.content_extractor import ExtractedRemoteContent, RemoteContentExtractor
+from app.services.litellm_resilience import (
+    LiteLLMCircuitOpenError,
+    LiteLLMRetryExhaustedError,
+    ResilientLiteLLMClient,
+    get_shared_litellm_client,
+)
+from app.services.litellm_resilience import get_ai_observability
 
 
 class ResumeParsingError(RuntimeError):
@@ -306,20 +312,52 @@ class MockResumeParser(BaseResumeParser):
 
 
 class LiteLLMResumeParser(BaseResumeParser):
-    def __init__(self, settings: Settings, extractor: RemoteContentExtractor | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        extractor: RemoteContentExtractor | None = None,
+        completion_client: ResilientLiteLLMClient | None = None,
+    ) -> None:
         self.settings = settings
         self.extractor = extractor or RemoteContentExtractor(settings)
+        self.completion_client = completion_client or get_shared_litellm_client()
+        self.synthetic_fallback_parser = MockResumeParser(settings=settings, extractor=self.extractor)
 
     async def parse(self, message: ResumeParseMessage) -> TalentProfile:
         external_context, external_warnings = await collect_external_content_context(message, self.extractor)
         request_payload = self.build_request(message, external_context, external_warnings)
-        response = await acompletion(**request_payload)
+        try:
+            response = await self.completion_client.complete(operation="resume_parse", **request_payload)
+        except (LiteLLMRetryExhaustedError, LiteLLMCircuitOpenError) as exc:
+            fallback_profile = await self._try_synthetic_demo_fallback(message, exc)
+            if fallback_profile is not None:
+                return fallback_profile
+            raise ResumeParsingError(str(exc)) from exc
         content = self._extract_content(response)
 
         try:
             return TalentProfile.model_validate_json(content)
         except ValidationError as exc:
+            fallback_profile = await self._try_synthetic_demo_fallback(message, exc)
+            if fallback_profile is not None:
+                return fallback_profile
             raise ResumeParsingError("LiteLLM returned invalid talent profile JSON") from exc
+
+    async def _try_synthetic_demo_fallback(
+        self,
+        message: ResumeParseMessage,
+        cause: Exception,
+    ) -> TalentProfile | None:
+        synthetic_profile = self.synthetic_fallback_parser._load_synthetic_profile(message)
+        if synthetic_profile is None:
+            return None
+
+        logger.warning(
+            "Falling back to synthetic truth profile for demo sample resumeId=%s after remote parse failure: %s",
+            message.resume_id,
+            cause,
+        )
+        return await self.synthetic_fallback_parser.parse(message)
 
     def build_request(
         self,
@@ -329,7 +367,9 @@ class LiteLLMResumeParser(BaseResumeParser):
     ) -> dict[str, Any]:
         return {
             "model": self.settings.litellm_model,
+            "fallback_models": self.settings.ai_completion_fallback_models,
             "temperature": 0,
+            **self.settings.litellm_request_options(),
             "messages": [
                 {
                     "role": "system",
@@ -370,7 +410,7 @@ class LiteLLMResumeParser(BaseResumeParser):
         content: list[dict[str, Any]] = [
             {
                 "type": "text",
-                "text": self._build_context_text(message, payload, external_context, external_warnings),
+                "text": apply_pii_masking(self._build_context_text(message, payload, external_context, external_warnings)),
             },
         ]
 
@@ -380,7 +420,7 @@ class LiteLLMResumeParser(BaseResumeParser):
                     content.append(
                         {
                             "type": "text",
-                            "text": f"Page {page.page_number} text preview: {page.text_preview}",
+                            "text": f"Page {page.page_number} text preview: {apply_pii_masking(page.text_preview)}",
                         },
                     )
                 content.append(
@@ -396,7 +436,7 @@ class LiteLLMResumeParser(BaseResumeParser):
             content.append(
                 {
                     "type": "text",
-                    "text": self._build_external_content_prompt(item),
+                    "text": apply_pii_masking(self._build_external_content_prompt(item)),
                 },
             )
 
@@ -459,10 +499,13 @@ class LiteLLMResumeParser(BaseResumeParser):
         raise ResumeParsingError("LiteLLM response did not contain string content")
 
 
-def build_resume_parser(settings: Settings) -> BaseResumeParser:
+def build_resume_parser(
+    settings: Settings,
+    completion_client: ResilientLiteLLMClient | None = None,
+) -> BaseResumeParser:
     provider = settings.resume_parser_provider.strip().lower()
     if provider == "litellm":
-        return LiteLLMResumeParser(settings)
+        return LiteLLMResumeParser(settings, completion_client=completion_client)
     if provider == "mock":
         return MockResumeParser(settings=settings, extractor=RemoteContentExtractor(settings))
     raise ValueError(f"Unsupported resume parser provider: {settings.resume_parser_provider}")
@@ -472,6 +515,7 @@ async def collect_external_content_context(
     message: ResumeParseMessage,
     extractor: RemoteContentExtractor | None,
 ) -> tuple[list[ExternalContentContext], list[str]]:
+    observability = get_ai_observability()
     references = message.external_content_references[:MAX_EXTERNAL_CONTENT_ITEMS]
     if not references or extractor is None:
         return [], []
@@ -488,12 +532,14 @@ async def collect_external_content_context(
         if isinstance(result, Exception):
             warning = f"{reference.source_type} {reference.url} unavailable: {result}"
             logger.warning("Failed to extract external content from %s: %s", reference.url, result)
+            observability.record_external_content_failure()
             warnings.append(warning)
             continue
 
         assert isinstance(result, ExtractedRemoteContent)
         normalized_text = " ".join(result.plain_text.split())
         if not normalized_text:
+            observability.record_external_content_warning()
             warnings.append(f"{reference.source_type} {reference.url} returned empty content")
             continue
 
@@ -531,6 +577,26 @@ def build_external_content_summary(
 
     return " ".join(parts)
 
+
+def apply_pii_masking(text: str | None) -> str | None:
+    """脱敏和打码函数：保护个人可识别信息 (PII) 免于直接流入大模型"""
+    if not text:
+        return text
+
+    # 使用正则将中国大陆通用手机号脱敏，例如：13812345678 -> 138****5678
+    masked = re.sub(r"(?<!\d)(1[3-9]\d)\d{4}(\d{4})(?!\d)", r"\1****\2", text)
+    
+    # 邮箱地址脱敏：保留前两位和域名。如：student@gmail.com -> st***@gmail.com
+    masked = re.sub(
+        r"([a-zA-Z0-9_\-\.]{2})([a-zA-Z0-9_\-\.]+)(@[a-zA-Z0-9_\-\.]+)",
+        r"\1***\3",
+        masked,
+    )
+    
+    # 身份证号脱敏（包括15位或18位）：替换中部生日和顺序码
+    masked = re.sub(r"(?<!\d)(\d{6})\d{8}(\d{3}[0-9X])(?!\d)", r"\1********\2", masked, flags=re.IGNORECASE)
+    
+    return masked
 
 def build_structured_external_content_summary(
     extracted: ExtractedRemoteContent,

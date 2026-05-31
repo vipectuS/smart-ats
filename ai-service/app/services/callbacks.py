@@ -30,11 +30,11 @@ class BackendCallbackClient:
         path = self.settings.backend_parsed_result_path.format(resumeId=resume_id)
         await self._post(path, payload.model_dump(mode="json", by_alias=True))
 
-    async def report_failure(self, resume_id: UUID, reason: str) -> None:
+    async def report_failure(self, resume_id: UUID, reason: str, failure_code: str | None = None) -> None:
         if not self.settings.backend_parse_failed_path:
             raise BackendCallbackError("BACKEND_PARSE_FAILED_PATH is not configured")
 
-        payload = ParseFailurePayload(failureReason=reason)
+        payload = ParseFailurePayload(failureReason=reason, failureCode=failure_code)
         path = self.settings.backend_parse_failed_path.format(resumeId=resume_id)
         await self._post(path, payload.model_dump(mode="json", by_alias=True))
 

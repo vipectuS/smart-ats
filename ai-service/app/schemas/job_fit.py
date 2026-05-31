@@ -7,7 +7,7 @@ from app.schemas.common import CamelModel
 
 
 class JobFitReportRequest(CamelModel):
-    audience: Literal["candidate", "hr"]
+    audience: Literal["candidate", "hr", "shared"]
     candidate_name: str = Field(min_length=1)
     job_title: str = Field(min_length=1)
     job_description: str = Field(min_length=1)

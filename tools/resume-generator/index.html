@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人简历</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="resume-container">
+        <header>
+            <h1 class="name">夏李星</h1>
+            <div class="contact-info">
+                <span class="info-item">159-9569-2616</span>
+                <span class="divider">|</span>
+                <span class="info-item">vipectus014@gmail.com</span>
+                <span class="divider">|</span>
+                <span class="info-item"><a href="https://github.com/vipectuS" target="_blank">github.com/vipectuS</a></span>
+            </div>
+            <div class="objective">
+                <span><strong>求职方向：</strong>后端开发工程师 / 软件研发工程师</span>
+                <span class="divider">|</span>
+                <span><strong>期望城市：</strong>昆山 / 苏州 / 上海</span>
+            </div>
+        </header>
+
+        <section class="section">
+            <h2 class="section-title">教育背景</h2>
+            <div class="item">
+                <div class="item-header">
+                    <span class="title"><strong>江苏大学</strong> | 软件工程(本科)</span>
+                    <span class="date"><span>2022.09 -</span> <span>2026.06</span></span>
+                </div>
+                <ul class="details">
+                    <li><strong>英语能力：</strong>CET-6 598 分，可熟练阅读英文技术文档与开源项目资料。</li>
+                    <li><strong>竞赛荣誉：</strong>第十九届“挑战杯”全国大学生课外学术科技作品竞赛“揭榜挂帅”专项赛全国一等奖。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">技术能力</h2>
+            <ul class="skills-list">
+                <li><strong>语言基础：</strong>Java、Python、Rust；了解 Kotlin、SML、Haskell。</li>
+                <li><strong>后端开发：</strong>熟悉 Spring Boot 3.x、RESTful API 设计、分层架构与常见工程化实践。</li>
+                <li><strong>数据存储：</strong>具备 MySQL 表设计与查询优化经验，实际使用过 PostgreSQL 与 pgvector 做语义检索场景开发。</li>
+                <li><strong>工程能力：</strong>日常使用 Linux(Debian) 开发与部署，熟悉 Docker、Git 协作流程及基础 CI/CD 脚本编写。</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">核心项目经验</h2>
+
+            <div class="item">
+                <div class="item-header">
+                    <span class="title"><strong>EPivot 新一代工业数采智联平台</strong> (第十九届“挑战杯”国赛一等奖项目)</span>
+                    <span class="date"><span>2025.06 -</span> <span>2025.10</span></span>
+                </div>
+                <div class="item-subtitle">项目角色：后端核心开发/数据库架构设计</div>
+                <div class="item-desc">
+                    <strong>项目描述：</strong>基于开源鸿蒙生态的工业数据采集与控制平台，已落地模拟工业产线，解决多异构设备互联与智能分析痛点。
+                </div>
+                <div class="item-desc"><strong>核心技术：</strong>Java、Spring Boot、MySQL、MCP、Agent、CI/CD。</div>
+                <ul class="details">
+                    <li><strong>核心模块开发：</strong>负责设备孪生、排产调度等模块的后端设计与实现，参与 MySQL 核心库表建模与接口落地。</li>
+                    <li><strong>协议与智能能力集成：</strong>在 Spring Boot 服务中接入 MCP 协议与多模态模型能力，完成从自然语言分析到控制指令下发的闭环调用链。</li>
+                    <li><strong>接口与交付规范化：</strong>按 OpenAPI 统一出入参约定，补充 Git Hook 驱动的自动化构建流程，降低 Web 与大屏端联调成本。</li>
+                </ul>
+            </div>
+
+            <div class="item">
+                <div class="item-header">
+                    <span class="title"><strong>智能招聘辅助系统</strong> (Smart ATS - 毕业设计项目)</span>
+                    <span class="date"><span>2026.03 -</span> <span>至今</span></span>
+                </div>
+                <div class="item-subtitle">项目角色：独立完成核心研发</div>
+                <div class="item-desc">
+                    <strong>项目描述：</strong>融合 WebAssembly 端侧预处理与多模态大模型算力的新一代智能 ATS(人岗匹配)系统。
+                </div>
+                <div class="item-desc"><strong>核心技术：</strong>Kotlin、Spring Boot 3、PostgreSQL(pgvector)、Vue 3 + Wasm、FastAPI。</div>
+                <ul class="details">
+                    <li><strong>全链路实现：</strong>独立完成前端预处理、后端调度与 Python 模型服务的联调，打通简历解析、结果入库与人岗匹配主流程。</li>
+                    <li><strong>端侧预处理优化：</strong>将 PDF 渲染逻辑下沉到浏览器端 Wasm，仅向后端回传图像与结构化数据，减轻服务端解析压力。</li>
+                    <li><strong>语义匹配实现：</strong>基于 PostgreSQL pgvector 存储候选人与职位特征向量，完成余弦相似度检索与匹配结果输出。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">实践经历与个人亮点</h2>
+            <ul class="details">
+                <li><strong>清华 OS 训练营（2025 春夏）：</strong>自学 Rust 并完成训练营第四阶段，多次独立完成系统级实验与调试任务。</li>
+                <li><strong>Homelab 运维实践：</strong>长期维护 Debian 家用服务器，熟悉桥接网络、内网穿透、KVM 虚拟化与基础系统排障。</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>

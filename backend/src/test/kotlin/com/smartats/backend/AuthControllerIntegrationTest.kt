@@ -1,15 +1,21 @@
 package com.smartats.backend
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.smartats.backend.domain.AccessAuditActionType
+import com.smartats.backend.domain.AccessAuditActorRole
+import com.smartats.backend.domain.AccessAuditSensitiveField
+import com.smartats.backend.domain.AccessAuditTargetType
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
 import com.smartats.backend.dto.auth.LoginRequest
 import com.smartats.backend.dto.auth.RegisterRequest
+import com.smartats.backend.repository.AccessAuditEventRepository
 import com.smartats.backend.repository.JobRecommendationRepository
 import com.smartats.backend.repository.JobRepository
 import com.smartats.backend.repository.ResumeRepository
 import com.smartats.backend.repository.UserRepository
 import org.hamcrest.Matchers.not
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -39,6 +45,9 @@ class AuthControllerIntegrationTest {
     private lateinit var userRepository: UserRepository
 
     @Autowired
+    private lateinit var accessAuditEventRepository: AccessAuditEventRepository
+
+    @Autowired
     private lateinit var resumeRepository: ResumeRepository
 
     @Autowired
@@ -52,6 +61,7 @@ class AuthControllerIntegrationTest {
 
     @BeforeEach
     fun setUp() {
+        accessAuditEventRepository.deleteAll()
         jobRecommendationRepository.deleteAll()
         jobRepository.deleteAll()
         resumeRepository.deleteAll()
@@ -95,6 +105,10 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.message").value("Public registration cannot assign ADMIN role"))
+            .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+            .andExpect(jsonPath("$.retryable").value(true))
+            .andExpect(jsonPath("$.userHint").value("请检查输入内容后重试。"))
+            .andExpect(jsonPath("$.traceId").isNotEmpty)
     }
 
     @Test
@@ -167,6 +181,10 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.message").value("Invalid username or password"))
+            .andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"))
+            .andExpect(jsonPath("$.retryable").value(true))
+            .andExpect(jsonPath("$.userHint").value("请确认认证信息后重试。"))
+            .andExpect(jsonPath("$.traceId").isNotEmpty)
     }
 
     @Test
@@ -201,5 +219,21 @@ class AuthControllerIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.username").value("current_user"))
             .andExpect(jsonPath("$.data.email").value("current@example.com"))
+
+        val currentUser = userRepository.findByUsername("current_user").orElseThrow()
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        val accountViewedEvent = accessAuditEvents.single { it.actionType == AccessAuditActionType.USER_ACCOUNT_VIEWED }
+        assertEquals("current_user", accountViewedEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, accountViewedEvent.actorRole)
+        assertEquals(AccessAuditTargetType.USER, accountViewedEvent.targetType)
+        assertEquals(requireNotNull(currentUser.id), accountViewedEvent.targetId)
+
+        val accountEmailEvent = accessAuditEvents.single {
+            it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED && it.sensitiveField == AccessAuditSensitiveField.ACCOUNT_EMAIL
+        }
+        assertEquals("current_user", accountEmailEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, accountEmailEvent.actorRole)
+        assertEquals(AccessAuditTargetType.USER, accountEmailEvent.targetType)
+        assertEquals(requireNotNull(currentUser.id), accountEmailEvent.targetId)
     }
 }

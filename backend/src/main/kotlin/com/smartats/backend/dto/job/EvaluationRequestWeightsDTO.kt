@@ -1,6 +1,7 @@
 package com.smartats.backend.dto.job
 
 import jakarta.validation.constraints.DecimalMin
+import jakarta.validation.constraints.Size
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -13,6 +14,8 @@ data class EvaluationRequestWeightsDTO(
     val educationWeight: BigDecimal? = null,
     @field:DecimalMin(value = "0.0", inclusive = true)
     val semanticWeight: BigDecimal? = null,
+    @field:Size(max = 300)
+    val evaluationNote: String? = null,
 )
 
 data class AppliedEvaluationWeights(

@@ -1,182 +1,83 @@
 <template>
-  <div class="h-screen w-screen bg-gray-50 flex justify-center items-center relative overflow-hidden">
-    <!-- Particle Network Background -->
-    <canvas ref="canvasRef" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+  <div class="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
     
-    <div class="bg-white/80 backdrop-blur-lg p-10 rounded-2xl shadow-xl border border-gray-200 w-[400px] z-10 transform transition-all hover:-translate-y-1">
-      <div class="mb-8 text-center">
-        <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">智能招聘系统</h2>
-        <p class="text-gray-500 mt-2 text-sm">欢迎回来，请登录。</p>
-      </div>
+    <div class="relative z-10 w-full max-w-5xl bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row h-auto min-h-[580px] transition-all duration-300">
       
-      <form @submit.prevent="handleLogin" class="space-y-6">
-        <div>
-          <label class="block text-gray-700 text-sm font-semibold mb-2" for="username">
-            用户名
-          </label>
-          <input 
-            v-model="username" 
-            class="w-full px-4 py-3 bg-gray-100/50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-            id="username" 
-            type="text" 
-            placeholder="请输入用户名"
-            required
-          >
+      <!-- Left Side Brand Area -->
+      <div class="hidden md:flex md:w-1/2 bg-blue-700 relative flex-col justify-between p-12 text-white overflow-hidden">
+        <div class="relative z-10">
+          <h1 class="text-4xl font-extrabold tracking-tight mb-4 flex items-center gap-3">
+            <span class="bg-white text-blue-700 p-2 rounded-lg">
+              <Zap class="w-8 h-8" />
+            </span>
+            Smart ATS
+          </h1>
+          <p class="text-blue-100 text-lg leading-relaxed max-w-md mt-6">
+            基于多模态大模型的企业级智能招聘辅助引擎<br/>
+            高效精准锁定行业顶尖人才
+          </p>
         </div>
         
-        <div>
-          <label class="block text-gray-700 text-sm font-semibold mb-2" for="password">
-            密码
-          </label>
-          <input 
-            v-model="password" 
-            class="w-full px-4 py-3 bg-gray-100/50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-            id="password" 
-            type="password" 
-            placeholder="******"
-            required
-          >
+        <div class="relative z-10 mt-auto border-t border-white/20 pt-6">
+          <div class="flex items-center gap-4">
+            <Shield class="w-10 h-10 text-blue-200 opacity-50" />
+            <div>
+              <h4 class="font-semibold text-blue-50">企业级安全防护</h4>
+              <p class="text-sm text-blue-200 opacity-80">SSL级通讯加密与数据隔离</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side Form Area -->
+      <div class="w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center relative bg-white">
+        <!-- Logo for mobile only -->
+        <div class="md:hidden flex items-center gap-2 mb-8">
+          <span class="bg-blue-700 text-white p-1.5 rounded-lg">
+            <Zap class="w-6 h-6" />
+          </span>
+          <span class="text-2xl font-bold text-slate-800">Smart ATS</span>
         </div>
 
-        <div v-if="successMsg" class="text-emerald-700 text-sm font-medium text-center bg-emerald-50 py-3 rounded-lg border border-emerald-100">
-          {{ successMsg }}
+        <div class="mb-8">
+          <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+            {{ isLogin ? '登录账户' : '创建账户' }}
+          </h2>
+          <p class="text-slate-500 mt-2 text-sm flex gap-2">
+            {{ isLogin ? '没有账号?' : '已有账号?' }}
+            <button 
+              @click="toggleMode"
+              class="text-blue-600 hover:text-blue-700 font-semibold transition-colors focus:outline-none"
+            >
+              {{ isLogin ? '立即注册' : '返回登录' }}
+            </button>
+          </p>
         </div>
 
-        <div v-if="authStore.error" class="text-red-600 text-sm font-medium text-center bg-red-50 py-3 rounded-lg border border-red-100">
-          {{ authStore.error }}
+        <!-- Form Components -->
+        <div class="transition-all duration-300 ease-in-out">
+          <LoginForm v-if="isLogin" />
+          <RegisterForm v-else @success="handleRegisterSuccess" />
         </div>
-
-        <button 
-          type="submit" 
-          :disabled="authStore.loading"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/30 transition-all disabled:opacity-70 flex justify-center items-center"
-        >
-          <svg v-if="authStore.loading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ authStore.loading ? '认证中...' : '登录' }}
-        </button>
-      </form>
-      
-      <div class="mt-8 space-y-4 pt-6 border-t border-gray-100 text-center">
-        <p class="text-sm text-gray-500">
-          还没有账号？
-          <router-link to="/register" class="font-semibold text-blue-600 transition hover:text-blue-700 hover:underline">
-            立即注册
-          </router-link>
-        </p>
-        <p class="text-xs text-gray-400 text-balance">
-          开发环境可通过本地环境变量预填测试账号，正式流程请使用真实注册或已存在账号登录
-        </p>
+        
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useAuthStore } from '../stores/auth';
-import { useRoute, useRouter } from 'vue-router';
+import { ref } from 'vue';
+import { Zap, Shield } from 'lucide-vue-next';
+import LoginForm from '@/components/auth/LoginForm.vue';
+import RegisterForm from '@/components/auth/RegisterForm.vue';
 
-const authStore = useAuthStore();
-const router = useRouter();
-const route = useRoute();
+const isLogin = ref(true);
 
-const username = ref(import.meta.env.VITE_DEV_DEFAULT_USERNAME || '');
-const password = ref(import.meta.env.VITE_DEV_DEFAULT_PASSWORD || ''); 
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-const successMsg = ref('');
-
-const handleLogin = async () => {
-  const user = await authStore.login({
-    username: username.value,
-    password: password.value
-  });
-  
-  if (user) {
-    router.push({ name: user.role === 'CANDIDATE' ? 'candidateDashboard' : 'dashboard' });
-  }
+const toggleMode = () => {
+  isLogin.value = !isLogin.value;
 };
 
-// Canvas High-Tech Particle Animation (Light Theme)
-let animationFrameId: number;
-
-onMounted(() => {
-  if (route.query.registered === '1') {
-    successMsg.value = '注册成功，请使用新账号登录。';
-    router.replace({ name: 'login' });
-  }
-
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  let width = canvas.width = window.innerWidth;
-  let height = canvas.height = window.innerHeight;
-
-  const particles: any[] = [];
-  const particleCount = Math.floor((width * height) / 15000); 
-
-  for (let i = 0; i < particleCount; i++) {
-    particles.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      radius: Math.random() * 2 + 1
-    });
-  }
-
-  const draw = () => {
-    ctx.clearRect(0, 0, width, height);
-    
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.4)';
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-
-      if (p.x < 0 || p.x > width) p.vx *= -1;
-      if (p.y < 0 || p.y > height) p.vy *= -1;
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      for (let j = i + 1; j < particles.length; j++) {
-        const p2 = particles[j];
-        const dx = p.x - p2.x;
-        const dy = p.y - p2.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < 150) {
-          ctx.beginPath();
-          ctx.strokeStyle = `rgba(59, 130, 246, ${0.2 * (1 - dist / 150)})`;
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-        }
-      }
-    }
-    animationFrameId = requestAnimationFrame(draw);
-  };
-
-  draw();
-
-  const handleResize = () => {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  };
-  window.addEventListener('resize', handleResize);
-
-  onUnmounted(() => {
-    cancelAnimationFrame(animationFrameId);
-    window.removeEventListener('resize', handleResize);
-  });
-});
+const handleRegisterSuccess = () => {
+  isLogin.value = true;
+};
 </script>

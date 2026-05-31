@@ -6,8 +6,15 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 PID_DIR="$ROOT_DIR/tools/maintenance/pids"
 LOG_DIR="$ROOT_DIR/tools/maintenance/logs"
 WITH_DEMO_DATA="${1:-}"
+SEED_LOG_FILE="$LOG_DIR/seed_demo_data.log"
+PHASE6_LOG_FILE="$LOG_DIR/phase6_report.log"
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
+
+is_pid_running() {
+  local pid="$1"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
 
 ensure_ai_venv() {
   if [[ ! -x "$ROOT_DIR/ai-service/.venv/bin/python" ]]; then
@@ -46,12 +53,32 @@ start_service() {
   )
 }
 
+assert_service_process_alive() {
+  local name="$1"
+  local pid_file="$PID_DIR/$name.pid"
+
+  if [[ ! -f "$pid_file" ]]; then
+    echo "[error] $name pid file is missing"
+    return 1
+  fi
+
+  local pid
+  pid="$(cat "$pid_file")"
+  if ! is_pid_running "$pid"; then
+    echo "[error] $name exited before becoming ready; see $LOG_DIR/$name.log"
+    return 1
+  fi
+}
+
 wait_for_http() {
   local name="$1"
   local url="$2"
   local attempts="${3:-60}"
 
   for ((i=1; i<=attempts; i++)); do
+    if ! assert_service_process_alive "$name"; then
+      return 1
+    fi
     if curl -s -o /dev/null "$url"; then
       echo "[ready] $name -> $url"
       return 0
@@ -61,6 +88,34 @@ wait_for_http() {
 
   echo "[error] $name did not become ready: $url"
   return 1
+}
+
+run_logged_maintenance_step() {
+  local label="$1"
+  local log_file="$2"
+  shift 2
+
+  echo "[$label] writing detailed output to $log_file"
+  cat >"$log_file" <<EOF
+[$label] started at $(date -Iseconds)
+EOF
+  if "$@" >>"$log_file" 2>&1; then
+    echo "[$label] completed"
+    return 0
+  fi
+
+  echo "[error] $label failed; see $log_file"
+  tail -n 20 "$log_file" || true
+  return 1
+}
+
+initialize_demo_log_file() {
+  local label="$1"
+  local log_file="$2"
+
+  cat >"$log_file" <<EOF
+[$label] initialized at $(date -Iseconds)
+EOF
 }
 
 ensure_ai_venv
@@ -88,8 +143,19 @@ wait_for_http frontend http://127.0.0.1:5173
 if [[ "$WITH_DEMO_DATA" == "--with-demo-data" ]]; then
   echo "[seed] importing demo data"
   cd "$ROOT_DIR"
-  python3 tools/maintenance/seed_demo_data.py
-  python3 tools/maintenance/generate_phase6_report.py
+  initialize_demo_log_file seed-demo-data "$SEED_LOG_FILE"
+  initialize_demo_log_file phase6-report "$PHASE6_LOG_FILE"
+  run_logged_maintenance_step \
+    seed-demo-data \
+    "$SEED_LOG_FILE" \
+    python3 tools/maintenance/seed_demo_data.py
+  cat >"$PHASE6_LOG_FILE" <<EOF
+[phase6-report] starting at $(date -Iseconds)
+EOF
+  run_logged_maintenance_step \
+    phase6-report \
+    "$PHASE6_LOG_FILE" \
+    python3 tools/maintenance/generate_phase6_report.py
 fi
 
 cat <<EOF
@@ -99,6 +165,9 @@ Smart ATS local demo is ready.
 - Backend:  http://127.0.0.1:18080
 - AI:       http://127.0.0.1:8000/health
 - Logs:     $LOG_DIR
+- Seed log: $SEED_LOG_FILE
+- Report:   $ROOT_DIR/tools/maintenance/output/phase6_report.json
+- Report log: $PHASE6_LOG_FILE
 - Stop:     $ROOT_DIR/tools/maintenance/stop_local_demo.sh
 
 EOF

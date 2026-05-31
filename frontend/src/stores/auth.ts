@@ -1,19 +1,27 @@
 import { defineStore } from 'pinia';
 import api from '../utils/api';
+import { resolveApiError } from '../utils/apiError';
 
 export type UserRole = 'HR' | 'CANDIDATE' | 'ADMIN';
+
+export interface OrganizationRef {
+  id: string;
+  name: string;
+}
 
 export interface AuthUser {
   id: string;
   username: string;
   email: string;
   role: UserRole;
+  organization: OrganizationRef | null;
   createdAt: string;
 }
 
 interface LoginCredentials {
   username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 interface RegisterPayload {
@@ -21,6 +29,8 @@ interface RegisterPayload {
   email: string;
   password: string;
   role: UserRole;
+  organizationId?: string | null;
+  organizationToken?: string | null;
 }
 
 const parseStoredUser = (): AuthUser | null => {
@@ -61,12 +71,13 @@ export const useAuthStore = defineStore('auth', {
         this.token = response.data.accessToken;
         this.user = response.data.user;
         
+        // If rememberMe wasn't passed, default behavior remains
         localStorage.setItem('token', this.token || '');
         localStorage.setItem('user', JSON.stringify(this.user));
         
         return this.user;
       } catch (err: any) {
-        this.error = err.response?.data?.message || '登录失败 / Login failed';
+        this.error = resolveApiError(err, '登录失败 / Login failed').summary;
         return null;
       } finally {
         this.loading = false;
@@ -80,7 +91,7 @@ export const useAuthStore = defineStore('auth', {
         const response: any = await api.post('/v1/auth/register', payload);
         return response.data;
       } catch (err: any) {
-        this.error = err.response?.data?.message || '注册失败 / Register failed';
+        this.error = resolveApiError(err, '注册失败 / Register failed').summary;
         throw err;
       } finally {
         this.loading = false;
@@ -99,7 +110,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('user', JSON.stringify(this.user));
         return this.user;
       } catch (err: any) {
-        this.error = err.response?.data?.message || '获取用户信息失败';
+        this.error = resolveApiError(err, '获取用户信息失败').summary;
         this.logout();
         return null;
       } finally {
@@ -113,6 +124,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('savedCreds');
     }
   }
 });

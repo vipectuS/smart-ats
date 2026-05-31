@@ -9,6 +9,7 @@ import java.util.UUID
 interface UserRepository : JpaRepository<User, UUID> {
     fun findByUsername(username: String): Optional<User>
     fun countByRole(role: UserRole): Long
+    fun countByOrganizationIdAndRole(organizationId: UUID, role: UserRole): Long
     fun existsByUsername(username: String): Boolean
     fun existsByEmail(email: String): Boolean
 }

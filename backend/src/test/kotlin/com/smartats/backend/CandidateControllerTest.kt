@@ -1,6 +1,10 @@
 package com.smartats.backend
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.smartats.backend.domain.AccessAuditActionType
+import com.smartats.backend.domain.AccessAuditActorRole
+import com.smartats.backend.domain.AccessAuditSensitiveField
+import com.smartats.backend.domain.AccessAuditTargetType
 import com.smartats.backend.domain.Job
 import com.smartats.backend.domain.JobApplication
 import com.smartats.backend.domain.JobApplicationStatus
@@ -8,22 +12,26 @@ import com.smartats.backend.domain.JobFavorite
 import com.smartats.backend.domain.JobFavoriteStatus
 import com.smartats.backend.domain.JobIgnore
 import com.smartats.backend.domain.JobIgnoreStatus
+import com.smartats.backend.domain.Organization
 import com.smartats.backend.domain.Resume
 import com.smartats.backend.domain.User
 import com.smartats.backend.domain.UserRole
 import com.smartats.backend.dto.auth.LoginRequest
 import com.smartats.backend.queue.ResumeParseMessage
 import com.smartats.backend.queue.ResumeQueueProducer
+import com.smartats.backend.repository.AccessAuditEventRepository
 import com.smartats.backend.repository.JobApplicationRepository
 import com.smartats.backend.repository.JobFavoriteRepository
 import com.smartats.backend.repository.JobIgnoreRepository
 import com.smartats.backend.repository.JobRecommendationRepository
 import com.smartats.backend.repository.JobRepository
+import com.smartats.backend.repository.OrganizationRepository
 import com.smartats.backend.repository.ResumeRepository
 import com.smartats.backend.repository.UserRepository
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mockingDetails
@@ -65,6 +73,9 @@ class CandidateControllerTest {
     private lateinit var jobRepository: JobRepository
 
     @Autowired
+    private lateinit var organizationRepository: OrganizationRepository
+
+    @Autowired
     private lateinit var jobRecommendationRepository: JobRecommendationRepository
 
     @Autowired
@@ -82,11 +93,15 @@ class CandidateControllerTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired
+    private lateinit var accessAuditEventRepository: AccessAuditEventRepository
+
     @MockBean
     private lateinit var resumeQueueProducer: ResumeQueueProducer
 
     @BeforeEach
     fun setUp() {
+        accessAuditEventRepository.deleteAll()
         jobRecommendationRepository.deleteAll()
         jobApplicationRepository.deleteAll()
         jobFavoriteRepository.deleteAll()
@@ -140,9 +155,31 @@ class CandidateControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.username").value("candidate_profile"))
+            .andExpect(jsonPath("$.data.email").value("candidate_profile@example.com"))
             .andExpect(jsonPath("$.data.latestResume.status").value("PARSED"))
             .andExpect(jsonPath("$.data.latestResume.parsedData.basicInfo.fullName").value("Candidate Profile"))
             .andExpect(jsonPath("$.data.latestResume.parsedData.skills[0].name").value("Kotlin"))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(9, accessAuditEvents.size)
+
+        val profileAuditEvent = accessAuditEvents.single { it.actionType == AccessAuditActionType.CANDIDATE_PROFILE_VIEWED }
+        assertEquals("candidate_profile", profileAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.CANDIDATE, profileAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.USER, profileAuditEvent.targetType)
+        assertEquals(requireNotNull(candidate.id), profileAuditEvent.targetId)
+
+        val sensitiveFieldEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(8, sensitiveFieldEvents.size)
+        assertEquals(
+            setOf(
+                AccessAuditSensitiveField.ACCOUNT_EMAIL,
+                AccessAuditSensitiveField.CONTACT_INFO,
+                AccessAuditSensitiveField.BASIC_INFO_EMAIL,
+                AccessAuditSensitiveField.BASIC_INFO_PHONE,
+            ),
+            sensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet(),
+        )
     }
 
     @Test
@@ -191,6 +228,11 @@ class CandidateControllerTest {
         assertNotNull(savedResume.ownerUser)
         assertEquals(owner.id, savedResume.ownerUser?.id)
         assertEquals(2, savedResume.browserPreprocessedPayload?.get("pageCount"))
+
+        val uploadSensitiveEvents = accessAuditEventRepository.findAll()
+            .filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(1, uploadSensitiveEvents.size)
+        assertEquals(AccessAuditSensitiveField.CONTACT_INFO, uploadSensitiveEvents.single().sensitiveField)
 
         val invocation = mockingDetails(resumeQueueProducer).invocations.single {
             it.method.name == "publish"
@@ -247,6 +289,165 @@ class CandidateControllerTest {
     }
 
     @Test
+    fun `candidate can list owned resume history and inspect stored browser render result`() {
+        val accessToken = obtainAccessToken("history_candidate", "history_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("history_candidate").orElseThrow()
+
+        val olderResume = resumeRepository.save(
+            Resume(
+                candidateName = "History Candidate",
+                contactInfo = "history_candidate@example.com",
+                rawContentReference = "browser-pdf-preview://history/older.pdf",
+                ownerUser = candidate,
+                parsedData = sampleParsedData(
+                    fullName = "History Candidate",
+                    email = "history_candidate@example.com",
+                    skills = listOf("Kotlin"),
+                    summary = "Older parsed summary",
+                ),
+                browserPreprocessedPayload = mapOf(
+                    "sourceFileName" to "older.pdf",
+                    "pageCount" to 1,
+                    "pagePreviews" to listOf(
+                        mapOf(
+                            "pageNumber" to 1,
+                            "imageDataUrl" to "data:image/jpeg;base64,older-preview",
+                            "textPreview" to "Older preview text",
+                        ),
+                    ),
+                ),
+                status = "PARSED",
+            ),
+        )
+        olderResume.updatedAt = LocalDateTime.now().minusDays(1)
+        resumeRepository.save(olderResume)
+
+        val latestResume = resumeRepository.save(
+            Resume(
+                candidateName = "History Candidate",
+                contactInfo = "history_candidate@example.com",
+                rawContentReference = "browser-pdf-preview://history/latest.pdf",
+                ownerUser = candidate,
+                parsedData = sampleParsedData(
+                    fullName = "History Candidate",
+                    email = "history_candidate@example.com",
+                    skills = listOf("Vue", "TypeScript"),
+                    summary = "Latest parsed summary",
+                ),
+                browserPreprocessedPayload = mapOf(
+                    "sourceFileName" to "latest.pdf",
+                    "pageCount" to 2,
+                    "pagePreviews" to listOf(
+                        mapOf(
+                            "pageNumber" to 1,
+                            "imageDataUrl" to "data:image/jpeg;base64,latest-preview-1",
+                            "textPreview" to "Latest preview text",
+                        ),
+                    ),
+                ),
+                status = "PARSED",
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/candidate/resumes")
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.length()").value(2))
+            .andExpect(jsonPath("$.data[0].resumeId").value(requireNotNull(latestResume.id).toString()))
+            .andExpect(jsonPath("$.data[1].resumeId").value(requireNotNull(olderResume.id).toString()))
+
+        mockMvc.perform(
+            get("/api/candidate/resumes/{resumeId}", requireNotNull(olderResume.id))
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.resumeId").value(requireNotNull(olderResume.id).toString()))
+            .andExpect(jsonPath("$.data.browserPreprocessedPayload.sourceFileName").value("older.pdf"))
+            .andExpect(jsonPath("$.data.browserPreprocessedPayload.pagePreviews[0].textPreview").value("Older preview text"))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(10, accessAuditEvents.size)
+
+        val accessAuditEvent = accessAuditEvents.single { it.actionType == AccessAuditActionType.RESUME_VIEWED }
+        assertEquals("history_candidate", accessAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.CANDIDATE, accessAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.RESUME, accessAuditEvent.targetType)
+        assertEquals(requireNotNull(olderResume.id), accessAuditEvent.targetId)
+
+        val sensitiveFieldEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(9, sensitiveFieldEvents.size)
+        assertEquals(
+            setOf(
+                AccessAuditSensitiveField.CONTACT_INFO,
+                AccessAuditSensitiveField.BASIC_INFO_EMAIL,
+                AccessAuditSensitiveField.BASIC_INFO_PHONE,
+            ),
+            sensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet(),
+        )
+        assertEquals(6, sensitiveFieldEvents.count { it.targetId == requireNotNull(latestResume.id) || it.targetId == requireNotNull(olderResume.id) } )
+    }
+
+    @Test
+    fun `candidate can manually reparse owned resume with latest profile links`() {
+        val accessToken = obtainAccessToken("reparse_candidate", "reparse_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("reparse_candidate").orElseThrow()
+
+        mockMvc.perform(
+            put("/api/candidate/profile")
+                .header("Authorization", "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        mapOf(
+                            "githubUrl" to "https://github.com/reparse-candidate",
+                            "portfolioUrl" to "https://reparse-candidate.dev",
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+
+        val resume = resumeRepository.save(
+            Resume(
+                candidateName = "Reparse Candidate",
+                contactInfo = "reparse_candidate@example.com",
+                rawContentReference = "browser-pdf-preview://reparse/resume.pdf",
+                ownerUser = candidate,
+                parsedData = sampleParsedData(
+                    fullName = "Reparse Candidate",
+                    email = "reparse_candidate@example.com",
+                    skills = listOf("Kotlin", "Spring Boot"),
+                    summary = "Previous parsed summary",
+                ),
+                browserPreprocessedPayload = mapOf("sourceFileName" to "reparse.pdf"),
+                status = "PARSED",
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/candidate/resumes/{resumeId}/reparse", requireNotNull(resume.id))
+                .header("Authorization", "Bearer $accessToken"),
+        )
+            .andExpect(status().isAccepted)
+            .andExpect(jsonPath("$.message").value("Candidate resume parse queued"))
+            .andExpect(jsonPath("$.data.resumeId").value(requireNotNull(resume.id).toString()))
+            .andExpect(jsonPath("$.data.status").value("PENDING_PARSE"))
+
+        val refreshedResume = resumeRepository.findById(requireNotNull(resume.id)).orElseThrow()
+        assertEquals("PENDING_PARSE", refreshedResume.status)
+
+        val publishedMessage = mockingDetails(resumeQueueProducer).invocations.last {
+            it.method.name == "publish"
+        }.arguments.first() as ResumeParseMessage
+        assertEquals(requireNotNull(resume.id), publishedMessage.resumeId)
+        assertEquals(2, publishedMessage.externalContentReferences.size)
+        assertEquals("https://github.com/reparse-candidate", publishedMessage.externalContentReferences[0].url)
+        assertEquals("https://reparse-candidate.dev", publishedMessage.externalContentReferences[1].url)
+    }
+
+    @Test
     fun `candidate reverse matching returns candidate-facing suitability report`() {
         val candidateToken = obtainAccessToken("market_candidate", "market_candidate@example.com", UserRole.CANDIDATE)
         val candidate = userRepository.findByUsername("market_candidate").orElseThrow()
@@ -277,6 +478,7 @@ class CandidateControllerTest {
                     "experienceYears" to 3,
                 ),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         jobRepository.save(
@@ -285,6 +487,7 @@ class CandidateControllerTest {
                 description = "Need Figma, CSS and animation skills",
                 requirements = mapOf("skills" to listOf("Figma", "CSS")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
 
@@ -301,6 +504,85 @@ class CandidateControllerTest {
             .andExpect(jsonPath("$.data.recommendations[0].xaiReport.improvementSuggestions[0]").exists())
             .andExpect(jsonPath("$.data.recommendations[0].actionState.applied").value(false))
                 .andExpect(jsonPath("$.data.recommendations[0].matchedSkills[0]").value("Java"))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(3, accessAuditEvents.size)
+
+        val matchAuditEvent = accessAuditEvents.single { it.actionType == AccessAuditActionType.CANDIDATE_JOB_MATCHES_VIEWED }
+        assertEquals("market_candidate", matchAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.CANDIDATE, matchAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.USER, matchAuditEvent.targetType)
+        assertEquals(requireNotNull(candidate.id), matchAuditEvent.targetId)
+
+        val detailEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.RECOMMENDATION_JOB_DETAILS_VIEWED }
+        assertEquals(2, detailEvents.size)
+        assertEquals(
+            setOf("Java Platform Engineer", "Frontend Designer"),
+            detailEvents.map { event ->
+                jobRepository.findById(event.targetId).orElseThrow().title
+            }.toSet(),
+        )
+        assertTrue(detailEvents.all { it.actorRole == AccessAuditActorRole.CANDIDATE })
+        assertTrue(detailEvents.all { it.targetType == AccessAuditTargetType.JOB })
+    }
+
+    @Test
+    fun `candidate repeated reverse matching reuses persisted records instead of duplicating them`() {
+        val candidateToken = obtainAccessToken("persisted_candidate", "persisted_candidate@example.com", UserRole.CANDIDATE)
+        val candidate = userRepository.findByUsername("persisted_candidate").orElseThrow()
+        val hrOwner = ensureUser("persisted_hr", "persisted_hr@example.com", UserRole.HR)
+
+        resumeRepository.save(
+            Resume(
+                candidateName = "Persisted Candidate",
+                contactInfo = "persisted_candidate@example.com",
+                rawContentReference = "s3://resumes/persisted-candidate.pdf",
+                parsedData = sampleParsedData(
+                    fullName = "Persisted Candidate",
+                    email = "persisted_candidate@example.com",
+                    skills = listOf("Java", "Spring Boot", "Docker"),
+                    summary = "Built Java Spring services and Docker delivery pipelines",
+                ),
+                ownerUser = candidate,
+                status = "PARSED",
+            ),
+        )
+
+        jobRepository.save(
+            Job(
+                title = "Backend Platform Engineer",
+                description = "Need Java Spring Boot and Docker experience",
+                requirements = mapOf("skills" to listOf("Java", "Spring Boot", "Docker")),
+                createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
+            ),
+        )
+        jobRepository.save(
+            Job(
+                title = "Data Analyst",
+                description = "Need SQL and dashboard experience",
+                requirements = mapOf("skills" to listOf("SQL", "Dashboard")),
+                createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/candidate/match-jobs")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+
+        val firstCount = jobRecommendationRepository.count()
+        assertEquals(2, firstCount)
+
+        mockMvc.perform(
+            post("/api/candidate/match-jobs")
+                .header("Authorization", "Bearer $candidateToken"),
+        )
+            .andExpect(status().isOk)
+
+        assertEquals(firstCount, jobRecommendationRepository.count())
     }
 
     @Test
@@ -315,6 +597,7 @@ class CandidateControllerTest {
                 description = "Need Kotlin Spring Boot and Docker delivery experience",
                 requirements = mapOf("skills" to listOf("Kotlin", "Spring Boot", "Docker")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         jobRepository.save(
@@ -323,6 +606,7 @@ class CandidateControllerTest {
                 description = "Need Figma and illustration skills",
                 requirements = mapOf("skills" to listOf("Figma", "Illustration")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
 
@@ -374,6 +658,9 @@ class CandidateControllerTest {
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.message").value("Candidate must upload and parse a resume before matching jobs"))
+            .andExpect(jsonPath("$.code").value("CANDIDATE_RESUME_REQUIRED"))
+            .andExpect(jsonPath("$.retryable").value(true))
+            .andExpect(jsonPath("$.userHint").value("请先在我的档案中上传并完成简历解析，再生成岗位匹配结果。"))
 
         val pendingResume = resumeRepository.findAll().single()
         pendingResume.ownerUser = candidate
@@ -448,6 +735,7 @@ class CandidateControllerTest {
                 description = "Backend role for action flow",
                 requirements = mapOf("skills" to listOf("Kotlin")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         val favoriteJob = jobRepository.save(
@@ -456,6 +744,7 @@ class CandidateControllerTest {
                 description = "Platform role for action flow",
                 requirements = mapOf("skills" to listOf("PostgreSQL")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         val ignoredJob = jobRepository.save(
@@ -464,6 +753,7 @@ class CandidateControllerTest {
                 description = "Frontend role for action flow",
                 requirements = mapOf("skills" to listOf("CSS")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
 
@@ -613,6 +903,7 @@ class CandidateControllerTest {
                 description = "Role that moves into interview stage",
                 requirements = mapOf("skills" to listOf("Kotlin", "Vue")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
 
@@ -683,6 +974,7 @@ class CandidateControllerTest {
                 description = "Build Java Spring Boot services with Docker",
                 requirements = mapOf("skills" to listOf("Java", "Spring Boot", "Docker")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         jobRepository.save(
@@ -691,6 +983,7 @@ class CandidateControllerTest {
                 description = "Need Figma and CSS",
                 requirements = mapOf("skills" to listOf("Figma", "CSS")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
 
@@ -736,6 +1029,7 @@ class CandidateControllerTest {
                 description = "Backend timeline role",
                 requirements = mapOf("skills" to listOf("Kotlin")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         val favoriteJob = jobRepository.save(
@@ -744,6 +1038,7 @@ class CandidateControllerTest {
                 description = "Platform timeline role",
                 requirements = mapOf("skills" to listOf("PostgreSQL")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
         val ignoredJob = jobRepository.save(
@@ -752,6 +1047,7 @@ class CandidateControllerTest {
                 description = "Frontend timeline role",
                 requirements = mapOf("skills" to listOf("CSS")),
                 createdBy = hrOwner,
+                organization = requireNotNull(hrOwner.organization),
             ),
         )
 
@@ -865,6 +1161,21 @@ class CandidateControllerTest {
                     passwordHash = passwordEncoder.encode("Password123"),
                     email = email,
                     role = role,
+                    organization = if (role == UserRole.HR) ensureOrganization(username) else null,
+                ),
+            )
+        }
+    }
+
+    private fun ensureOrganization(seed: String): Organization {
+        val normalizedName = "Org-$seed"
+        return organizationRepository.findByNameIgnoreCase(normalizedName).orElseGet {
+            organizationRepository.save(
+                Organization(
+                    name = normalizedName,
+                    tokenHash = passwordEncoder.encode("token-$seed"),
+                    tokenPreview = "org_****${seed.takeLast(4).padStart(4, '0')}",
+                    enabled = true,
                 ),
             )
         }

@@ -1,14 +1,23 @@
 package com.smartats.backend.service
 
+import com.smartats.backend.domain.AdminParseFailureReviewStatus
+import com.smartats.backend.domain.AdminParseFailureReviewActionType
+import com.smartats.backend.domain.AdminParseFailureReviewEvent
 import com.smartats.backend.config.InternalCallbackProperties
 import com.smartats.backend.config.ResumeQueueProperties
 import com.smartats.backend.domain.Resume
+import com.smartats.backend.domain.User
+import com.smartats.backend.domain.UserRole
 import com.smartats.backend.dto.resume.ResumeParseFailedRequest
 import com.smartats.backend.dto.resume.ResumeParsedResultRequest
 import com.smartats.backend.dto.resume.CreateResumeRequest
 import com.smartats.backend.dto.resume.ResumeParseTriggerResponse
 import com.smartats.backend.dto.resume.ResumeResponse
 import com.smartats.backend.dto.resume.ResumeStatusResponse
+import com.smartats.backend.dto.resume.composeParseFailureValue
+import com.smartats.backend.dto.candidate.CandidateResumeDetailResponse
+import com.smartats.backend.dto.candidate.CandidateResumeSummaryResponse
+import com.smartats.backend.exception.ApiErrorCode
 import com.smartats.backend.exception.BadRequestException
 import com.smartats.backend.exception.ResourceNotFoundException
 import com.smartats.backend.exception.InvalidCredentialsException
@@ -16,6 +25,7 @@ import com.smartats.backend.queue.ExternalContentReference
 import com.smartats.backend.queue.ResumeParseMessage
 import com.smartats.backend.queue.ResumeQueueProducer
 import com.smartats.backend.repository.CandidateProfileRepository
+import com.smartats.backend.repository.AdminParseFailureReviewEventRepository
 import com.smartats.backend.repository.ResumeRepository
 import com.smartats.backend.repository.UserRepository
 import org.springframework.data.domain.PageRequest
@@ -26,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant
+import java.time.LocalDateTime
 import java.util.UUID
 
 @Service
@@ -33,10 +44,12 @@ class ResumeService(
     private val resumeRepository: ResumeRepository,
     private val userRepository: UserRepository,
     private val candidateProfileRepository: CandidateProfileRepository,
+    private val adminParseFailureReviewEventRepository: AdminParseFailureReviewEventRepository,
     private val resumeQueueProducer: ResumeQueueProducer,
     private val resumeQueueProperties: ResumeQueueProperties,
     private val internalCallbackProperties: InternalCallbackProperties,
     private val embeddingService: EmbeddingService,
+    private val recommendationRefreshTrigger: RecommendationRefreshTrigger,
 ) {
 
     companion object {
@@ -103,6 +116,94 @@ class ResumeService(
         )
     }
 
+    @Transactional(readOnly = true)
+    fun listCandidateResumes(username: String): List<CandidateResumeSummaryResponse> {
+        val candidate = getCandidateUser(username)
+        return resumeRepository.findByOwnerUserIdOrderByUpdatedAtDesc(requireNotNull(candidate.id))
+            .map { CandidateResumeSummaryResponse.from(it) }
+    }
+
+    @Transactional(readOnly = true)
+    fun getCandidateResume(username: String, resumeId: UUID): CandidateResumeDetailResponse {
+        val candidate = getCandidateUser(username)
+        val resume = resumeRepository.findByIdAndOwnerUserId(resumeId, requireNotNull(candidate.id))
+            ?: throw ResourceNotFoundException("Resume not found")
+        return CandidateResumeDetailResponse.from(resume)
+    }
+
+    @Transactional
+    fun triggerCandidateResumeParse(username: String, resumeId: UUID): ResumeParseTriggerResponse {
+        val candidate = getCandidateUser(username)
+        val resume = resumeRepository.findByIdAndOwnerUserId(resumeId, requireNotNull(candidate.id))
+            ?: throw ResourceNotFoundException("Resume not found")
+
+        resume.status = STATUS_PENDING_PARSE
+        resume.parseFailureReason = null
+        val savedResume = resumeRepository.save(resume)
+        publishParseMessage(savedResume)
+
+        return ResumeParseTriggerResponse(
+            resumeId = requireNotNull(savedResume.id),
+            status = savedResume.status,
+            queued = true,
+            channel = resumeQueueProperties.channel,
+        )
+    }
+
+    @Transactional
+    fun updateAdminReview(
+        resumeId: UUID,
+        adminUsername: String,
+        note: String?,
+        reviewStatus: AdminParseFailureReviewStatus?,
+    ): Resume {
+        val resume = getResumeEntity(resumeId)
+        ensureFailedResume(resume)
+        val previousReviewStatus = resume.adminReviewStatus
+        applyAdminReview(resume, adminUsername, note, reviewStatus)
+        val savedResume = resumeRepository.save(resume)
+        appendAdminReviewEvent(
+            resume = savedResume,
+            adminUsername = adminUsername,
+            actionType = AdminParseFailureReviewActionType.REVIEW_SAVED,
+            note = savedResume.adminReviewNote,
+            previousReviewStatus = previousReviewStatus,
+            nextReviewStatus = savedResume.adminReviewStatus,
+        )
+        return savedResume
+    }
+
+    @Transactional
+    fun retryFailedResumeAsAdmin(resumeId: UUID, adminUsername: String, note: String?): ResumeParseTriggerResponse {
+        val resume = getResumeEntity(resumeId)
+        ensureFailedResume(resume)
+
+        val previousReviewStatus = resume.adminReviewStatus
+        applyAdminReview(resume, adminUsername, note, AdminParseFailureReviewStatus.APPROVED_FOR_RETRY)
+        resume.status = STATUS_PENDING_PARSE
+        resume.parseFailureReason = null
+        resume.parsedData = null
+        resume.embedding = null
+        resume.runtimeEmbedding = null
+        val savedResume = resumeRepository.save(resume)
+        appendAdminReviewEvent(
+            resume = savedResume,
+            adminUsername = adminUsername,
+            actionType = AdminParseFailureReviewActionType.RETRY_QUEUED,
+            note = savedResume.adminReviewNote,
+            previousReviewStatus = previousReviewStatus,
+            nextReviewStatus = savedResume.adminReviewStatus,
+        )
+        publishParseMessage(savedResume)
+
+        return ResumeParseTriggerResponse(
+            resumeId = requireNotNull(savedResume.id),
+            status = savedResume.status,
+            queued = true,
+            channel = resumeQueueProperties.channel,
+        )
+    }
+
     private fun publishParseMessage(resume: Resume) {
         val message = ResumeParseMessage(
             resumeId = requireNotNull(resume.id),
@@ -125,6 +226,33 @@ class ResumeService(
             object : TransactionSynchronization {
                 override fun afterCommit() {
                     resumeQueueProducer.publish(message)
+                }
+            },
+        )
+    }
+
+    private fun scheduleResumeRecommendationRefresh(resumeId: UUID) {
+        runAfterCommit {
+            recommendationRefreshTrigger.refreshResumeRecommendations(resumeId)
+        }
+    }
+
+    private fun scheduleResumeRecommendationClear(resumeId: UUID) {
+        runAfterCommit {
+            recommendationRefreshTrigger.clearResumeRecommendations(resumeId)
+        }
+    }
+
+    private fun runAfterCommit(task: () -> Unit) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            task()
+            return
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(
+            object : TransactionSynchronization {
+                override fun afterCommit() {
+                    task()
                 }
             },
         )
@@ -170,6 +298,7 @@ class ResumeService(
         resume.parseFailureReason = null
         val savedResume = resumeRepository.save(resume)
         persistResumeEmbedding(savedResume, parsedData)
+        scheduleResumeRecommendationRefresh(requireNotNull(savedResume.id))
     }
 
     @Transactional
@@ -180,7 +309,12 @@ class ResumeService(
     ): ResumeStatusResponse {
         validateInternalApiKey(apiKey)
         if (request.parsedData.isEmpty()) {
-            throw BadRequestException("parsedData must not be empty")
+            throw BadRequestException(
+                message = "parsedData must not be empty",
+                errorCode = ApiErrorCode.RESUME_PARSED_DATA_REQUIRED,
+                retryable = true,
+                userHint = "请确认 AI 回调携带了完整的 parsedData 后再重试。",
+            )
         }
 
         val resume = getResumeEntity(resumeId)
@@ -189,6 +323,7 @@ class ResumeService(
         resume.parseFailureReason = null
         val savedResume = resumeRepository.save(resume)
         persistResumeEmbedding(savedResume, request.parsedData)
+        scheduleResumeRecommendationRefresh(requireNotNull(savedResume.id))
         return ResumeStatusResponse.from(savedResume)
     }
 
@@ -196,11 +331,13 @@ class ResumeService(
     fun markParseFailed(resumeId: UUID, reason: String? = null) {
         val resume = getResumeEntity(resumeId)
         resume.status = STATUS_PARSE_FAILED
+        resetAdminReview(resume)
         resume.parsedData = null
         resume.embedding = null
         resume.runtimeEmbedding = null
         resume.parseFailureReason = reason?.trim()?.ifBlank { null }
-        resumeRepository.save(resume)
+        val savedResume = resumeRepository.save(resume)
+        scheduleResumeRecommendationClear(requireNotNull(savedResume.id))
     }
 
     @Transactional
@@ -213,15 +350,22 @@ class ResumeService(
 
         val resume = getResumeEntity(resumeId)
         if (resume.status == STATUS_PARSED) {
-            throw BadRequestException("Cannot mark a parsed resume as failed")
+            throw BadRequestException(
+                message = "Cannot mark a parsed resume as failed",
+                errorCode = ApiErrorCode.RESUME_ALREADY_PARSED,
+                retryable = false,
+                userHint = "该简历已经完成解析，如需重试请重新发起解析流程。",
+            )
         }
 
         resume.status = STATUS_PARSE_FAILED
+        resetAdminReview(resume)
         resume.parsedData = null
         resume.embedding = null
         resume.runtimeEmbedding = null
-        resume.parseFailureReason = request.reason?.trim()?.ifBlank { null }
+        resume.parseFailureReason = composeParseFailureValue(request.failureCode, request.reason)
         val savedResume = resumeRepository.save(resume)
+        scheduleResumeRecommendationClear(requireNotNull(savedResume.id))
         return ResumeStatusResponse.from(savedResume)
     }
 
@@ -237,14 +381,84 @@ class ResumeService(
         resume.runtimeEmbedding = embedding
     }
 
+    private fun ensureFailedResume(resume: Resume) {
+        if (resume.status != STATUS_PARSE_FAILED) {
+            throw BadRequestException(
+                message = "Only failed resumes can be manually reviewed or retried",
+                errorCode = ApiErrorCode.PARSE_FAILURE_INVALID_STATE,
+                retryable = false,
+                userHint = "请仅对解析失败的简历执行人工复核或重试。",
+            )
+        }
+    }
+
+    private fun applyAdminReview(
+        resume: Resume,
+        adminUsername: String,
+        note: String?,
+        reviewStatus: AdminParseFailureReviewStatus?,
+    ) {
+        resume.adminReviewNote = note?.trim()?.ifBlank { null }
+        resume.adminReviewedBy = adminUsername
+        resume.adminReviewedAt = LocalDateTime.now()
+        resume.adminReviewStatus = reviewStatus ?: resume.adminReviewStatus
+    }
+
+    private fun appendAdminReviewEvent(
+        resume: Resume,
+        adminUsername: String,
+        actionType: AdminParseFailureReviewActionType,
+        note: String?,
+        previousReviewStatus: AdminParseFailureReviewStatus,
+        nextReviewStatus: AdminParseFailureReviewStatus,
+    ) {
+        adminParseFailureReviewEventRepository.save(
+            AdminParseFailureReviewEvent(
+                resume = resume,
+                adminUsername = adminUsername,
+                actionType = actionType,
+                note = note,
+                previousReviewStatus = previousReviewStatus,
+                nextReviewStatus = nextReviewStatus,
+                resumeStatusAfterAction = resume.status,
+            ),
+        )
+    }
+
+    private fun resetAdminReview(resume: Resume) {
+        resume.adminReviewNote = null
+        resume.adminReviewedBy = null
+        resume.adminReviewedAt = null
+        resume.adminReviewStatus = AdminParseFailureReviewStatus.UNREVIEWED
+    }
+
     private fun getResumeEntity(resumeId: UUID): Resume {
         return resumeRepository.findById(resumeId)
             .orElseThrow { ResourceNotFoundException("Resume not found") }
     }
 
+    private fun getCandidateUser(username: String): User {
+        val user = userRepository.findByUsername(username)
+            .orElseThrow { ResourceNotFoundException("User not found") }
+        if (user.role != UserRole.CANDIDATE) {
+            throw BadRequestException(
+                message = "Current user is not a candidate",
+                errorCode = ApiErrorCode.CANDIDATE_ROLE_REQUIRED,
+                retryable = false,
+                userHint = "请使用候选人账号访问该功能。",
+            )
+        }
+        return user
+    }
+
     private fun validateInternalApiKey(apiKey: String?) {
         if (apiKey.isNullOrBlank() || apiKey != internalCallbackProperties.apiKey) {
-            throw InvalidCredentialsException("Invalid internal API key")
+            throw InvalidCredentialsException(
+                message = "Invalid internal API key",
+                errorCode = ApiErrorCode.INTERNAL_API_KEY_INVALID,
+                retryable = false,
+                userHint = "请检查 AI 服务与后端之间的内部回调密钥配置。",
+            )
         }
     }
 }

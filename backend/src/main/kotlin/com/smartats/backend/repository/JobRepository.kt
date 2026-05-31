@@ -1,6 +1,8 @@
 package com.smartats.backend.repository
 
 import com.smartats.backend.domain.Job
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -10,6 +12,9 @@ import java.util.UUID
 
 @Repository
 interface JobRepository : JpaRepository<Job, UUID> {
+	fun findByOrganizationId(organizationId: UUID, pageable: Pageable): Page<Job>
+	fun countByOrganizationId(organizationId: UUID): Long
+
 	@Modifying
 	@Query(
 		value = "UPDATE jobs SET embedding = CAST(:embedding AS vector), updated_at = CURRENT_TIMESTAMP WHERE id = :jobId",
@@ -24,8 +29,9 @@ interface JobRepository : JpaRepository<Job, UUID> {
 			FROM jobs j
 			WHERE j.embedding IS NOT NULL
 			ORDER BY j.embedding <=> CAST(:embedding AS vector) ASC
+                        LIMIT :limit
 		""",
 		nativeQuery = true,
 	)
-	fun findSemanticMatches(@Param("embedding") embedding: String): List<JobSemanticMatchProjection>
+	fun findSemanticMatches(@Param("embedding") embedding: String, @Param("limit") limit: Int = 100): List<JobSemanticMatchProjection>
 }

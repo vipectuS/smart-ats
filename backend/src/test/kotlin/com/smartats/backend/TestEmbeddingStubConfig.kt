@@ -67,20 +67,21 @@ private object SharedEmbeddingStubServer {
             val matchScore = root.path("matchScore").decimalValue().setScale(2)
             val missingSkills = root.path("missingSkills")
                 .mapNotNull { node -> node.asText().takeIf { it.isNotBlank() } }
-            val narrative = if (audience == "candidate") {
-                "岗位适应性报告与技能提升建议：你当前与「$jobTitle」的综合匹配度为 $matchScore%，建议优先补强 ${missingSkills.joinToString(", ").ifBlank { "关键业务成果表达" }}。"
-            } else {
-                "Candidate-job fit summary for $jobTitle at $matchScore% with gaps in ${missingSkills.joinToString(", ").ifBlank { "none" }}."
+            val missingSkillSummary = missingSkills.joinToString("、").ifBlank { "关键业务成果表达" }
+            val narrative = when (audience) {
+                "candidate" -> "岗位适应性报告与技能提升建议：你当前与「$jobTitle」的综合匹配度为 $matchScore%，建议优先补强 $missingSkillSummary。"
+                "hr" -> "岗位候选人适配分析：候选人与「$jobTitle」的综合匹配度为 $matchScore%，当前待补强项为 $missingSkillSummary。"
+                else -> "共享岗位匹配分析：当前围绕「$jobTitle」形成的综合匹配度为 $matchScore%，仍需优先补齐 $missingSkillSummary。"
             }
             val payload = mapper.writeValueAsBytes(
                 mapOf(
-                    "headline" to "Stubbed structured fit report",
+                    "headline" to "测试桩结构化匹配报告",
                     "fitBand" to if (matchScore.toDouble() >= 80.0) "HIGH" else if (matchScore.toDouble() >= 55.0) "MEDIUM" else "LOW",
-                    "summary" to "Stub summary for $jobTitle",
-                    "strengths" to listOf("Semantic alignment already established"),
-                    "risks" to listOf("Missing skills: ${missingSkills.joinToString(", ").ifBlank { "none" }}"),
-                    "improvementSuggestions" to listOf("Improve ${missingSkills.firstOrNull() ?: "project impact phrasing"}"),
-                    "nextSteps" to listOf("Refresh role-specific project evidence"),
+                    "summary" to "已完成围绕 $jobTitle 的结构化匹配分析。",
+                    "strengths" to listOf("当前语义相关性已经建立"),
+                    "risks" to listOf("待补强技能：${missingSkills.joinToString("、").ifBlank { "暂无" }}"),
+                    "improvementSuggestions" to listOf("优先补强 ${missingSkills.firstOrNull() ?: "项目成果量化表达"}"),
+                    "nextSteps" to listOf("补充更贴近岗位的项目证据"),
                     "narrative" to narrative,
                 ),
             )

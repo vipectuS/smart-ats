@@ -16,4 +16,5 @@ interface JobRecommendationRepository : JpaRepository<JobRecommendation, UUID> {
     fun findByJobId(jobId: UUID): List<JobRecommendation>
     fun findByResumeId(resumeId: UUID): List<JobRecommendation>
     fun deleteByJobId(jobId: UUID)
+    fun deleteByResumeId(resumeId: UUID)
 }

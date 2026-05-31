@@ -41,8 +41,22 @@ class JobRecommendation(
     @Column(name = "match_score", nullable = false, precision = 5, scale = 2)
     var matchScore: BigDecimal,
 
+    @Column(name = "semantic_score", nullable = false, precision = 5, scale = 2)
+    var semanticScore: BigDecimal,
+
     @Column(name = "xai_reasoning", nullable = false, columnDefinition = "TEXT")
     var xaiReasoning: String,
+
+    @Column(name = "suitability_report", nullable = false, columnDefinition = "TEXT")
+    var suitabilityReport: String,
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "matched_skills", nullable = false, columnDefinition = "jsonb")
+    var matchedSkills: List<String> = emptyList(),
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "missing_skills", nullable = false, columnDefinition = "jsonb")
+    var missingSkills: List<String> = emptyList(),
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "xai_report", columnDefinition = "jsonb")

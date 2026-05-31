@@ -2,9 +2,15 @@ package com.smartats.backend
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.smartats.backend.domain.AccessAuditActionType
+import com.smartats.backend.domain.AccessAuditActorRole
+import com.smartats.backend.domain.AccessAuditSensitiveField
+import com.smartats.backend.domain.AccessAuditTargetType
 import com.smartats.backend.domain.Resume
+import com.smartats.backend.domain.UserRole
 import com.smartats.backend.queue.ResumeParseMessage
 import com.smartats.backend.queue.ResumeQueueProducer
+import com.smartats.backend.repository.AccessAuditEventRepository
 import com.smartats.backend.repository.ResumeRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -37,11 +43,15 @@ class ResumeControllerTest {
     @Autowired
     private lateinit var resumeRepository: ResumeRepository
 
+    @Autowired
+    private lateinit var accessAuditEventRepository: AccessAuditEventRepository
+
     @MockBean
     private lateinit var resumeQueueProducer: ResumeQueueProducer
 
     @BeforeEach
     fun setUp() {
+        accessAuditEventRepository.deleteAll()
         resumeRepository.deleteAll()
     }
 
@@ -52,6 +62,11 @@ class ResumeControllerTest {
             "contactInfo" to "jane@example.com",
             "rawContentReference" to "/tmp/resumes/jane-doe.pdf",
             "parsedData" to mapOf(
+                "basicInfo" to mapOf(
+                    "fullName" to "Jane Doe",
+                    "email" to "jane@example.com",
+                    "phone" to "13800000000",
+                ),
                 "education" to listOf("BSc Computer Science"),
                 "skills" to listOf("Kotlin", "SQL"),
                 "radar" to mapOf("communication" to 4.5, "problemSolving" to 4.8),
@@ -79,6 +94,26 @@ class ResumeControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.id").value(resumeId))
             .andExpect(jsonPath("$.data.parsedData.skills[1]").value("SQL"))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(7, accessAuditEvents.size)
+
+        val accessAuditEvent = accessAuditEvents.single { it.actionType == AccessAuditActionType.RESUME_VIEWED }
+        assertEquals("resume_admin", accessAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, accessAuditEvent.actorRole)
+        assertEquals(AccessAuditTargetType.RESUME, accessAuditEvent.targetType)
+        assertEquals(java.util.UUID.fromString(resumeId), accessAuditEvent.targetId)
+
+        val sensitiveFieldEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(6, sensitiveFieldEvents.size)
+        assertEquals(
+            setOf(
+                AccessAuditSensitiveField.CONTACT_INFO,
+                AccessAuditSensitiveField.BASIC_INFO_EMAIL,
+                AccessAuditSensitiveField.BASIC_INFO_PHONE,
+            ),
+            sensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet(),
+        )
     }
 
     @Test
@@ -118,17 +153,38 @@ class ResumeControllerTest {
 
     @Test
     fun `list resumes returns paginated metadata`() {
-        repeat(3) { index ->
-            resumeRepository.save(
-                Resume(
-                    candidateName = "Paged Candidate ${index + 1}",
-                    contactInfo = "paged${index + 1}@example.com",
-                    rawContentReference = "/tmp/resumes/paged-${index + 1}.pdf",
-                    parsedData = null,
-                    status = if (index == 0) "PENDING_PARSE" else "PARSED",
+        resumeRepository.save(
+            Resume(
+                candidateName = "Paged Candidate 3",
+                contactInfo = "paged3@example.com",
+                rawContentReference = "/tmp/resumes/paged-3.pdf",
+                parsedData = null,
+                status = "PARSED",
+            ),
+        )
+        val secondResume = resumeRepository.save(
+            Resume(
+                candidateName = "Paged Candidate 2",
+                contactInfo = "paged2@example.com",
+                rawContentReference = "/tmp/resumes/paged-2.pdf",
+                parsedData = null,
+                status = "PARSED",
+            ),
+        )
+        val firstResume = resumeRepository.save(
+            Resume(
+                candidateName = "Paged Candidate 1",
+                contactInfo = "paged1@example.com",
+                rawContentReference = "/tmp/resumes/paged-1.pdf",
+                parsedData = mapOf(
+                    "basicInfo" to mapOf(
+                        "email" to "paged1@example.com",
+                        "phone" to "13800000001",
+                    ),
                 ),
-            )
-        }
+                status = "PENDING_PARSE",
+            ),
+        )
 
         mockMvc.perform(
             get("/api/resumes")
@@ -143,6 +199,38 @@ class ResumeControllerTest {
             .andExpect(jsonPath("$.data.totalElements").value(3))
             .andExpect(jsonPath("$.data.totalPages").value(2))
             .andExpect(jsonPath("$.data.last").value(false))
+            .andExpect(jsonPath("$.data.content[0].contactInfo").value("paged1@example.com"))
+            .andExpect(jsonPath("$.data.content[0].parsedData.basicInfo.email").value("paged1@example.com"))
+            .andExpect(jsonPath("$.data.content[0].parsedData.basicInfo.phone").value("13800000001"))
+
+        val accessAuditEvents = accessAuditEventRepository.findAll()
+        assertEquals(4, accessAuditEvents.size)
+
+        val sensitiveFieldEvents = accessAuditEvents.filter { it.actionType == AccessAuditActionType.SENSITIVE_FIELD_VIEWED }
+        assertEquals(4, sensitiveFieldEvents.size)
+        assertEquals(
+            setOf(
+                AccessAuditSensitiveField.CONTACT_INFO,
+                AccessAuditSensitiveField.BASIC_INFO_EMAIL,
+                AccessAuditSensitiveField.BASIC_INFO_PHONE,
+            ),
+            sensitiveFieldEvents.mapNotNull { it.sensitiveField }.toSet(),
+        )
+
+        val firstResumeEvents = sensitiveFieldEvents.filter { it.targetId == requireNotNull(firstResume.id) }
+        assertEquals(3, firstResumeEvents.size)
+        firstResumeEvents.forEach { event ->
+            assertEquals("resume_admin", event.actorUsername)
+            assertEquals(AccessAuditActorRole.HR, event.actorRole)
+            assertEquals(AccessAuditTargetType.RESUME, event.targetType)
+        }
+
+        val secondResumeEvent = sensitiveFieldEvents.single {
+            it.targetId == requireNotNull(secondResume.id) && it.sensitiveField == AccessAuditSensitiveField.CONTACT_INFO
+        }
+        assertEquals("resume_admin", secondResumeEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, secondResumeEvent.actorRole)
+        assertEquals(AccessAuditTargetType.RESUME, secondResumeEvent.targetType)
     }
 
     @Test
@@ -165,6 +253,13 @@ class ResumeControllerTest {
             .andExpect(jsonPath("$.data.resumeId").value(requireNotNull(resume.id).toString()))
             .andExpect(jsonPath("$.data.status").value("PARSING"))
             .andExpect(jsonPath("$.data.parsedDataAvailable").value(false))
+
+        val accessAuditEvent = accessAuditEventRepository.findAll().single()
+        assertEquals("resume_admin", accessAuditEvent.actorUsername)
+        assertEquals(AccessAuditActorRole.HR, accessAuditEvent.actorRole)
+        assertEquals(AccessAuditActionType.RESUME_STATUS_VIEWED, accessAuditEvent.actionType)
+        assertEquals(AccessAuditTargetType.RESUME, accessAuditEvent.targetType)
+        assertEquals(requireNotNull(resume.id), accessAuditEvent.targetId)
     }
 
     @Test
@@ -312,6 +407,10 @@ class ResumeControllerTest {
         )
             .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.message").value("Invalid internal API key"))
+            .andExpect(jsonPath("$.code").value("INTERNAL_API_KEY_INVALID"))
+            .andExpect(jsonPath("$.retryable").value(false))
+            .andExpect(jsonPath("$.userHint").value("请检查 AI 服务与后端之间的内部回调密钥配置。"))
+            .andExpect(jsonPath("$.traceId").isNotEmpty)
     }
 
     @Test
@@ -329,6 +428,7 @@ class ResumeControllerTest {
 
         val resumeId = requireNotNull(resume.id)
         val requestBody = mapOf(
+            "failureCode" to "OCR_LOW_CONFIDENCE",
             "reason" to "Vision model failed to parse uploaded image",
         )
 
@@ -342,6 +442,7 @@ class ResumeControllerTest {
             .andExpect(jsonPath("$.data.resumeId").value(resumeId.toString()))
             .andExpect(jsonPath("$.data.status").value("PARSE_FAILED"))
             .andExpect(jsonPath("$.data.parsedDataAvailable").value(false))
+            .andExpect(jsonPath("$.data.parseFailureCode").value("OCR_LOW_CONFIDENCE"))
             .andExpect(jsonPath("$.data.parseFailureReason").value("Vision model failed to parse uploaded image"))
 
         mockMvc.perform(
@@ -350,6 +451,7 @@ class ResumeControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.status").value("PARSE_FAILED"))
+            .andExpect(jsonPath("$.data.parseFailureCode").value("OCR_LOW_CONFIDENCE"))
             .andExpect(jsonPath("$.data.parseFailureReason").value("Vision model failed to parse uploaded image"))
 
         mockMvc.perform(
@@ -358,6 +460,7 @@ class ResumeControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.status").value("PARSE_FAILED"))
+            .andExpect(jsonPath("$.data.parseFailureCode").value("OCR_LOW_CONFIDENCE"))
             .andExpect(jsonPath("$.data.parseFailureReason").value("Vision model failed to parse uploaded image"))
             .andExpect(jsonPath("$.data.parsedData").doesNotExist())
     }
@@ -383,6 +486,9 @@ class ResumeControllerTest {
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.message").value("Cannot mark a parsed resume as failed"))
+            .andExpect(jsonPath("$.code").value("RESUME_ALREADY_PARSED"))
+            .andExpect(jsonPath("$.retryable").value(false))
+            .andExpect(jsonPath("$.userHint").value("该简历已经完成解析，如需重试请重新发起解析流程。"))
     }
 
     private fun extractId(json: String): String {

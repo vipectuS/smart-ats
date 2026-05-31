@@ -19,6 +19,30 @@ spring:
         enabled: false
 
 app:
+  governance:
+    data-retention:
+      enabled: false
+      purge-cron: 0 0 3 * * *
+      access-audit-retention-days: 365
+      parse-failure-review-retention-days: 365
+    security-headers:
+      enabled: true
+      hsts-enabled: false
+      hsts-max-age-seconds: 31536000
+      include-sub-domains: true
+      content-type-options-enabled: true
+      frame-options-mode: DENY
+      referrer-policy: strict-origin-when-cross-origin
+    transport-security:
+      tls-termination-expected: false
+      forwarded-headers-strategy: none
+      public-base-url:
+    secret-rotation:
+      enabled: true
+      max-secret-age-days: 90
+      fail-startup-on-blocking-findings: false
+      jwt-secret-last-rotated-on: 2026-05-01
+      internal-callback-key-last-rotated-on: 2026-05-01
   security:
     jwt:
       secret: test-secret-key-that-is-safely-long-enough-for-hmac-256
@@ -37,3 +61,6 @@ app:
     channel: resume.parse.requests.test
     listener-enabled: false
     mock-processing-delay-millis: 1
+
+server:
+  forward-headers-strategy: none

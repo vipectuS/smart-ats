@@ -26,7 +26,10 @@ api.interceptors.response.use((response) => {
 }, (error) => {
   if (error.response && error.response.status === 401) {
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    // 如果当前已经在 login 页面，则不进行强制重定向（避免输错密码时疯狂刷新页面）
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
   return Promise.reject(error);
 });

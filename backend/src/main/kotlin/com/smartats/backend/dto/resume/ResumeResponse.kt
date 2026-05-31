@@ -12,6 +12,7 @@ data class ResumeResponse(
     val contactInfo: String?,
     val rawContentReference: String,
     val parsedData: Map<String, Any>?,
+    val parseFailureCode: String?,
     val parseFailureReason: String?,
     val status: String,
     val createdAt: LocalDateTime,
@@ -19,13 +20,15 @@ data class ResumeResponse(
 ) {
     companion object {
         fun from(resume: Resume): ResumeResponse {
+            val parseFailure = parseFailureMetadata(resume.parseFailureReason)
             return ResumeResponse(
                 id = requireNotNull(resume.id),
                 candidateName = resume.candidateName,
                 contactInfo = resume.contactInfo,
                 rawContentReference = resume.rawContentReference,
                 parsedData = resume.parsedData,
-                parseFailureReason = resume.parseFailureReason,
+                parseFailureCode = parseFailure.code,
+                parseFailureReason = parseFailure.reason,
                 status = resume.status,
                 createdAt = resume.createdAt,
                 updatedAt = resume.updatedAt,

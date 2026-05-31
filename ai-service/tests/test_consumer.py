@@ -12,6 +12,7 @@ from app.consumer import ResumeQueueListener
 from app.schemas.resume import BasicInfo, RadarScores, TalentProfile
 from app.services.callbacks import BackendCallbackClient, BackendCallbackError
 from app.services.parser import ExternalContentContext, LiteLLMResumeParser, MockResumeParser
+from app.services.litellm_resilience import LiteLLMRetryExhaustedError
 from app.services.content_extractor import RemoteContentExtractor
 
 
@@ -43,7 +44,7 @@ def build_payload(include_external_refs: bool = False) -> str:
                     "pageNumber": 1,
                     "width": 280,
                     "height": 396,
-                    "imageDataUrl": "data:image/jpeg;base64,preview-1",
+                    "imageDataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4s8AAAAASUVORK5CYII=",
                     "textPreview": "Jane Doe backend engineer",
                 },
             ],
@@ -118,10 +119,15 @@ class StubExtractor:
         raise RuntimeError("unexpected url")
 
 
+class ExhaustedCompletionClient:
+    async def complete(self, **_kwargs):
+        raise LiteLLMRetryExhaustedError("synthetic demo upstream failure")
+
+
 class RecordingCallbackClient:
     def __init__(self) -> None:
         self.submitted: list[tuple[str, TalentProfile]] = []
-        self.failures: list[tuple[str, str]] = []
+        self.failures: list[tuple[str, str, str | None]] = []
         self.raise_on_submit = False
 
     async def submit_parsed_result(self, resume_id, profile: TalentProfile) -> None:
@@ -129,8 +135,8 @@ class RecordingCallbackClient:
             raise BackendCallbackError("upload failed")
         self.submitted.append((str(resume_id), profile))
 
-    async def report_failure(self, resume_id, reason: str) -> None:
-        self.failures.append((str(resume_id), reason))
+    async def report_failure(self, resume_id, reason: str, failure_code: str | None = None) -> None:
+        self.failures.append((str(resume_id), reason, failure_code))
 
     async def close(self) -> None:
         return None
@@ -190,7 +196,7 @@ async def test_resume_queue_listener_reports_failure_when_parser_raises() -> Non
     await listener._handle_payload(payload)
 
     assert callback_client.submitted == []
-    assert callback_client.failures == [(resume_id, "model timeout")]
+    assert callback_client.failures == [(resume_id, "model timeout", "RESUME_PARSE_TIMEOUT")]
 
 
 @pytest.mark.anyio
@@ -208,18 +214,24 @@ async def test_resume_queue_listener_reports_failure_when_upload_raises() -> Non
     await listener._handle_payload(payload)
 
     assert callback_client.submitted == []
-    assert callback_client.failures == [(resume_id, "upload failed")]
+    assert callback_client.failures == [(resume_id, "upload failed", None)]
 
 
 def test_litellm_parser_request_uses_json_schema_contract() -> None:
     from app.schemas.resume import ResumeParseMessage
 
-    parser = LiteLLMResumeParser(build_settings())
+    settings = build_settings()
+    settings.dashscope_api_key = "test-key"
+    settings.dashscope_api_base = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    parser = LiteLLMResumeParser(settings)
     message = ResumeParseMessage.model_validate_json(build_payload())
 
     request = parser.build_request(message)
 
-    assert request["model"] == build_settings().litellm_model
+    assert request["model"] == settings.litellm_model
+    assert request["fallback_models"] == []
+    assert request["api_key"] == "test-key"
+    assert request["api_base"] == "https://dashscope.aliyuncs.com/compatible-mode/v1"
     assert request["response_format"]["type"] == "json_schema"
     assert request["response_format"]["json_schema"]["name"] == "talent_profile"
     assert "basicInfo" in request["response_format"]["json_schema"]["schema"]["properties"]
@@ -257,6 +269,52 @@ async def test_mock_parser_summary_includes_external_content_when_present() -> N
 
 @pytest.mark.anyio
 async def test_mock_parser_loads_synthetic_truth_profile_when_sample_matches(tmp_path: Path) -> None:
+
+
+    @pytest.mark.anyio
+    async def test_litellm_parser_falls_back_to_synthetic_truth_for_demo_samples(tmp_path: Path) -> None:
+        from app.schemas.resume import ResumeParseMessage
+
+        truth_dir = tmp_path / "truth"
+        truth_dir.mkdir(parents=True)
+        (truth_dir / "C01_demo.json").write_text(
+            json.dumps(
+                {
+                    "candidateName": "演示候选人",
+                    "skills": ["Kotlin", "Spring Boot"],
+                    "summary": "Synthetic demo resume",
+                    "workExperiences": [
+                        {
+                            "company": "Smart ATS",
+                            "title": "Backend Engineer",
+                            "startDate": "2022-01",
+                        }
+                    ],
+                    "educationExperiences": [
+                        {
+                            "school": "ZJU",
+                            "degree": "Bachelor",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+        payload = json.loads(build_payload())
+        payload["rawContentReference"] = "synthetic://dataset/C01/C01_demo.pdf"
+        payload["browserPreprocessedPayload"]["sourceFileName"] = "C01_demo.pdf"
+        payload["browserPreprocessedPayload"]["derivedReference"] = "browser-pdf-preview://seed/C01/C01_demo.pdf"
+
+        settings = build_settings()
+        settings.synthetic_dataset_dir = str(tmp_path)
+        parser = LiteLLMResumeParser(settings, completion_client=ExhaustedCompletionClient())
+
+        profile = await parser.parse(ResumeParseMessage.model_validate(payload))
+
+        assert profile.basic_info.full_name == "演示候选人"
+        assert [skill.name for skill in profile.skills] == ["Kotlin", "Spring Boot"]
     from app.schemas.resume import ResumeParseMessage
 
     truth_dir = tmp_path / "truth"

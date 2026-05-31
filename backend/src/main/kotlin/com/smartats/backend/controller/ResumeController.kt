@@ -1,10 +1,13 @@
 package com.smartats.backend.controller
 
+import com.smartats.backend.domain.AccessAuditActionType
+import com.smartats.backend.domain.AccessAuditTargetType
 import com.smartats.backend.dto.ApiResponse
 import com.smartats.backend.dto.resume.ResumeStatusResponse
 import com.smartats.backend.dto.resume.CreateResumeRequest
 import com.smartats.backend.dto.resume.ResumeParseTriggerResponse
 import com.smartats.backend.dto.resume.ResumeResponse
+import com.smartats.backend.service.AccessAuditService
 import com.smartats.backend.service.ResumeService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.RequestParam
 import com.smartats.backend.dto.PageResponse
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
 import java.util.UUID
 import java.security.Principal
 
@@ -25,12 +29,17 @@ import java.security.Principal
 @RequestMapping("/api/resumes")
 class ResumeController(
     private val resumeService: ResumeService,
+    private val accessAuditService: AccessAuditService,
 ) {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    fun createResume(@Valid @RequestBody request: CreateResumeRequest): ResponseEntity<ApiResponse<ResumeResponse>> {
+    fun createResume(
+        @Valid @RequestBody request: CreateResumeRequest,
+        authentication: Authentication,
+    ): ResponseEntity<ApiResponse<ResumeResponse>> {
         val response = resumeService.createResume(request)
+        accessAuditService.recordResumeSensitiveFieldAccess(authentication, response.id, response.contactInfo, response.parsedData)
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse(status = HttpStatus.CREATED.value(), data = response, message = "Resume created"))
     }
@@ -39,9 +48,11 @@ class ResumeController(
     @PreAuthorize("hasRole('CANDIDATE')")
     fun uploadResume(
         principal: Principal,
+        authentication: Authentication,
         @Valid @RequestBody request: CreateResumeRequest,
     ): ResponseEntity<ApiResponse<ResumeResponse>> {
         val response = resumeService.createResumeForCandidate(principal.name, request)
+        accessAuditService.recordResumeSensitiveFieldAccess(authentication, response.id, response.contactInfo, response.parsedData)
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse(status = HttpStatus.CREATED.value(), data = response, message = "Resume uploaded"))
     }
@@ -51,22 +62,35 @@ class ResumeController(
     fun listResumes(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int,
+        authentication: Authentication,
     ): ApiResponse<PageResponse<ResumeResponse>> {
         val response = resumeService.listResumes(page, size)
+        response.content.forEach { resume ->
+            accessAuditService.recordResumeSensitiveFieldAccess(authentication, resume.id, resume.contactInfo, resume.parsedData)
+        }
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
     @GetMapping("/{resumeId}")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    fun getResume(@PathVariable resumeId: UUID): ApiResponse<ResumeResponse> {
+    fun getResume(
+        @PathVariable resumeId: UUID,
+        authentication: Authentication,
+    ): ApiResponse<ResumeResponse> {
         val response = resumeService.getResume(resumeId)
+        accessAuditService.recordAccess(authentication, AccessAuditActionType.RESUME_VIEWED, AccessAuditTargetType.RESUME, resumeId)
+        accessAuditService.recordResumeSensitiveFieldAccess(authentication, resumeId, response.contactInfo, response.parsedData)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
     @GetMapping("/{resumeId}/status")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    fun getResumeStatus(@PathVariable resumeId: UUID): ApiResponse<ResumeStatusResponse> {
+    fun getResumeStatus(
+        @PathVariable resumeId: UUID,
+        authentication: Authentication,
+    ): ApiResponse<ResumeStatusResponse> {
         val response = resumeService.getResumeStatus(resumeId)
+        accessAuditService.recordAccess(authentication, AccessAuditActionType.RESUME_STATUS_VIEWED, AccessAuditTargetType.RESUME, resumeId)
         return ApiResponse(status = HttpStatus.OK.value(), data = response, message = "Success")
     }
 
