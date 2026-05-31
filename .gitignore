@@ -50,4 +50,5 @@ doc/
 tools/maintenance/logs/
 tools/maintenance/output/
 tools/maintenance/pids/
+tools/resume-generator/
 
