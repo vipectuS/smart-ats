@@ -73,7 +73,7 @@
 
       <div class="rounded-xl border border-blue-100 bg-blue-50 p-5">
         <p class="text-sm font-semibold text-blue-800">完整深度分析</p>
-        <p class="mt-2 text-sm leading-7 text-blue-900/90">{{ recommendation.xaiReport.narrative || recommendation.suitabilityReport }}</p>
+        <p class="mt-2 text-sm leading-7 text-blue-900/90">{{ preferredNarrative }}</p>
       </div>
     </div>
 
@@ -204,5 +204,14 @@ const actionPlanSections = computed(() => {
       items: dedupeItems(groupedItems[key]),
     }))
     .filter((section) => section.items.length > 0);
+});
+
+const preferredNarrative = computed(() => {
+  const suitability = props.recommendation?.suitabilityReport?.trim();
+  if (suitability) {
+    return suitability;
+  }
+
+  return props.recommendation?.xaiReport?.narrative || '';
 });
 </script>

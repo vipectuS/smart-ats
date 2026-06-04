@@ -17,6 +17,11 @@ const createLoading = ref(false);
 const createError = ref('');
 const availableSkills = ref<PublicSkillCatalogItem[]>([]);
 
+const createResponsibilitiesPlaceholder = '例如：\n负责招聘系统核心功能设计\n推动跨团队协作交付';
+const createExperienceKeywordsPlaceholder = '例如：\nmicroservice\nhigh concurrency';
+const createEducationKeywordsPlaceholder = '例如：\ncomputer science\nsoftware engineering';
+const createHighlightsPlaceholder = '例如：\n核心业务场景\n成长空间明确';
+
 const createForm = ref({
   title: '',
   description: '',
@@ -124,6 +129,24 @@ const submitCreateJob = async () => {
 
 const goToJob = (id: number) => {
   router.push(`/jobs/${id}`);
+};
+
+const getJobRequirements = (job: any) => (job?.requirements && typeof job.requirements === 'object' ? job.requirements : {});
+
+const getJobDepartment = (job: any) => {
+  const requirements = getJobRequirements(job);
+  return requirements.department || job.organization?.name || '未配置部门';
+};
+
+const getJobLocation = (job: any) => {
+  const requirements = getJobRequirements(job);
+  return requirements.location || '地点待补充';
+};
+
+const getJobHeadcount = (job: any) => {
+  const requirements = getJobRequirements(job);
+  const parsed = Number(requirements.headcount);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
 const fetchJobs = async () => {
@@ -258,19 +281,19 @@ watch(
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="space-y-2 md:col-span-2">
               <label class="text-sm font-medium text-slate-700">核心职责（每行一条）</label>
-              <textarea v-model="createForm.responsibilities" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例如：\n负责招聘系统核心功能设计\n推动跨团队协作交付"></textarea>
+              <textarea v-model="createForm.responsibilities" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" :placeholder="createResponsibilitiesPlaceholder"></textarea>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-medium text-slate-700">经验关键词（每行一条）</label>
-              <textarea v-model="createForm.experienceKeywords" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例如：\nmicroservice\nhigh concurrency"></textarea>
+              <textarea v-model="createForm.experienceKeywords" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" :placeholder="createExperienceKeywordsPlaceholder"></textarea>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-medium text-slate-700">教育关键词（每行一条）</label>
-              <textarea v-model="createForm.educationKeywords" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例如：\ncomputer science\nsoftware engineering"></textarea>
+              <textarea v-model="createForm.educationKeywords" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" :placeholder="createEducationKeywordsPlaceholder"></textarea>
             </div>
             <div class="space-y-2 md:col-span-2">
               <label class="text-sm font-medium text-slate-700">岗位亮点（每行一条）</label>
-              <textarea v-model="createForm.highlights" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例如：\n核心业务场景\n成长空间明确"></textarea>
+              <textarea v-model="createForm.highlights" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" :placeholder="createHighlightsPlaceholder"></textarea>
             </div>
           </div>
         </div>
@@ -317,7 +340,7 @@ watch(
       
       <!-- Sub-header/Filters -->
       <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-         <h2 class="text-sm font-semibold text-slate-900">活跃岗位</h2>
+        <h2 class="text-sm font-semibold text-slate-900">已发布岗位</h2>
          <div class="flex items-center gap-2">
            <button @click="fetchJobs" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
               <RefreshCw class="w-4 h-4" :class="{'animate-spin': loading}" />
@@ -350,23 +373,21 @@ watch(
                   <div>
                     <h3 class="text-base font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{{ job.title }}</h3>
                     <div class="mt-1 flex items-center gap-3 text-sm text-slate-500">
-                      <span class="flex items-center gap-1">{{ job.department || '未分配部门' }}</span>
+                      <span class="flex items-center gap-1">{{ getJobDepartment(job) }}</span>
                       <span class="w-1 h-1 rounded-full bg-slate-300"></span>
-                      <span class="flex items-center gap-1">{{ job.location || '未知位置' }}</span>
+                      <span class="flex items-center gap-1">{{ getJobLocation(job) }}</span>
                     </div>
                   </div>
                </div>
                
                <div class="flex items-center gap-6">
                  <div class="text-right hidden sm:block">
-                   <div class="text-sm font-medium text-slate-900">{{ job.candidateCount || 0 }} <span class="text-slate-500 text-xs font-normal">位候选人</span></div>
+                   <div v-if="getJobHeadcount(job)" class="text-sm font-medium text-slate-900">招聘 {{ getJobHeadcount(job) }} <span class="text-slate-500 text-xs font-normal">人</span></div>
+                   <div v-else class="text-sm font-medium text-slate-900">已发布 <span class="text-slate-500 text-xs font-normal">岗位</span></div>
                  </div>
                  
-                 <span 
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                  :class="job.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'"
-                 >
-                   {{ job.status === 'ACTIVE' ? '招聘中' : '已关闭' }}
+                 <span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                   已发布
                  </span>
                  
                  <ChevronRight class="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors" />

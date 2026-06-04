@@ -147,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { useAuthStore, type UserRole, type OrganizationRef } from '@/stores/auth';
 import { AlertCircle, CheckCircle2, User, Building2, Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-vue-next';
 import api from '@/utils/api';
@@ -165,6 +165,7 @@ const successMsg = ref('');
 
 const organizations = ref<OrganizationRef[]>([]);
 const isLoadingOrgs = ref(false);
+const hasLoadedOrganizations = ref(false);
 
 const registerForm = reactive({
   username: '',
@@ -188,12 +189,19 @@ const isFormValid = computed(() => {
 });
 
 const loadOrganizations = async () => {
+  if (hasLoadedOrganizations.value || isLoadingOrgs.value) {
+    return;
+  }
+
   try {
     isLoadingOrgs.value = true;
     localError.value = '';
-    const res: any = await api.get('/v1/organizations');
-    // Assuming backend returns Page or List, adjust based on your API structure.
+    const res: any = await api.get('/organizations/public', {
+      skipAuth: true,
+      skipAuthRedirect: true,
+    } as any);
     organizations.value = Array.isArray(res.data) ? res.data : (res.data.content || []);
+    hasLoadedOrganizations.value = true;
   } catch (err: any) {
     localError.value = resolveApiError(err, '无法获取组织列表 / Failed to load organizations').summary;
   } finally {
@@ -201,8 +209,10 @@ const loadOrganizations = async () => {
   }
 };
 
-onMounted(() => {
-  loadOrganizations();
+watch(() => registerForm.role, (role) => {
+  if (role === 'HR') {
+    void loadOrganizations();
+  }
 });
 
 const handleSubmit = async () => {

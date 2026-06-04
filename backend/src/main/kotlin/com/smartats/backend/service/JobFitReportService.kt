@@ -55,10 +55,16 @@ class JobFitReportService(
             request.matchScore >= java.math.BigDecimal("55") -> "MEDIUM"
             else -> "LOW"
         }
+        val missingSkillSummary = request.missingSkills.take(3).joinToString("、")
         val summary = when (request.audience) {
             "candidate" -> "当前你与岗位《${request.jobTitle}》的匹配度约为 ${request.matchScore}%。"
             "hr" -> "候选人 ${request.candidateName} 与岗位《${request.jobTitle}》的匹配度约为 ${request.matchScore}%。"
             else -> "候选人与岗位《${request.jobTitle}》的当前匹配度约为 ${request.matchScore}%。"
+        }
+        val narrative = if (missingSkillSummary.isNotBlank()) {
+            "$summary 当前仍需重点补强 $missingSkillSummary 等关键能力。"
+        } else {
+            "$summary 建议继续强化可量化成果证明。"
         }
         return StructuredJobFitReport(
             headline = when (fitBand) {
@@ -82,7 +88,7 @@ class JobFitReportService(
                 add("把简历中的关键经历改写为更可量化的业务成果")
             },
             nextSteps = listOf("先核对待补强技能", "把最近项目重新组织成更有业务结果的证据"),
-            narrative = "$summary ${request.missingSkills.take(3).joinToString("、").ifBlank { "继续强化可量化成果证明。" }}".trim(),
+            narrative = narrative,
         )
     }
 }

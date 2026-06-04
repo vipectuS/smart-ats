@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Upload, FileText, Search, Calendar, ChevronRight, X, AlertCircle, Loader2, Inbox } from 'lucide-vue-next';
 import api from '@/utils/api';
@@ -15,18 +15,57 @@ const totalElements = ref(0);
 const loading = ref(true);
 const errorMsg = ref('');
 
+const normalizeKeyword = (value: string) => value.trim().toLowerCase();
+
+const extractResumeDisplayName = (resume: any) => {
+  if (resume.candidateName?.trim()) return resume.candidateName.trim();
+  const basicInfoName = resume.parsedData?.basicInfo?.fullName;
+  if (typeof basicInfoName === 'string' && basicInfoName.trim()) return basicInfoName.trim();
+  if (resume.status === 'PARSING' || resume.status === 'PENDING_PARSE') return '解析中...';
+  return '未知候选人';
+};
+
+const extractResumeFileName = (resume: any) => {
+  const rawReference = String(resume.rawContentReference || '');
+  if (!rawReference) return '未命名文件';
+  const normalized = rawReference.split('/').filter(Boolean);
+  return normalized[normalized.length - 1] || rawReference;
+};
+
+const filteredResumes = computed(() => {
+  const keyword = normalizeKeyword(searchQuery.value);
+
+  return resumes.value.filter((resume) => {
+    const matchesStatus = activeFilter.value === 'ALL'
+      ? true
+      : activeFilter.value === 'PENDING_PARSE'
+        ? resume.status === 'PENDING_PARSE' || resume.status === 'PARSING'
+        : resume.status === activeFilter.value;
+
+    if (!matchesStatus) {
+      return false;
+    }
+
+    if (!keyword) {
+      return true;
+    }
+
+    const haystack = [
+      extractResumeDisplayName(resume),
+      extractResumeFileName(resume),
+      resume.contactInfo || '',
+      resume.rawContentReference || '',
+    ].join(' ').toLowerCase();
+
+    return haystack.includes(keyword);
+  });
+});
+
 const fetchResumes = async () => {
   loading.value = true;
   errorMsg.value = '';
   try {
-    const params: any = { size: 100 };
-    if (searchQuery.value) {
-      params.keyword = searchQuery.value;
-    }
-    if (activeFilter.value !== 'ALL') {
-      params.status = activeFilter.value;
-    }
-    const res = await api.get('/resumes', { params });
+    const res = await api.get('/resumes', { params: { size: 100 } });
     if (res.data && res.data.content) {
       resumes.value = res.data.content;
       totalElements.value = res.data.totalElements || res.data.content.length;
@@ -51,6 +90,7 @@ const getStatusBadge = (status: string) => {
 const getStatusText = (status: string) => {
   if (status === 'PARSED') return '解析成功';
   if (status === 'PENDING_PARSE') return '待解析/队列中';
+  if (status === 'PARSING') return '解析中';
   if (status === 'PARSE_FAILED') return '解析失败';
   return status || '未知状态';
 };
@@ -63,8 +103,8 @@ const openUploadModal = () => {
   showUploadModal.value = true;
 };
 
-watch([activeFilter, searchQuery], () => {
-  fetchResumes();
+watch(searchQuery, () => {
+  if (loading.value) return;
 });
 
 onMounted(() => {
@@ -143,14 +183,14 @@ onMounted(() => {
              <p class="text-sm">正在加载数据...</p>
            </div>
            
-           <div v-else-if="resumes.length === 0" class="flex flex-col items-center justify-center p-16 text-slate-500">
+           <div v-else-if="filteredResumes.length === 0" class="flex flex-col items-center justify-center p-16 text-slate-500">
              <Inbox class="w-12 h-12 mb-4 text-slate-300" />
              <p class="text-sm">没找到匹配的简历</p>
            </div>
 
            <ul v-else class="divide-y divide-slate-100">
              <li 
-               v-for="resume in resumes" 
+               v-for="resume in filteredResumes" 
                :key="resume.id"
                @click="goToResume(resume.id)"
                class="bg-white hover:bg-slate-50 transition-colors cursor-pointer group"
@@ -163,10 +203,10 @@ onMounted(() => {
                      </div>
                      <div class="truncate">
                         <h3 class="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
-                           {{ resume.parsedName || (resume.status === 'PENDING_PARSE' ? '解析中...' : '未知候选人') }}
+                        {{ extractResumeDisplayName(resume) }}
                         </h3>
                         <div class="mt-1 flex items-center text-xs text-slate-500 gap-3 truncate">
-                           <span class="truncate">{{ resume.originalFileName }}</span>
+                        <span class="truncate">{{ extractResumeFileName(resume) }}</span>
                            <span class="w-1 h-1 rounded-full bg-slate-300 shrink-0"></span>
                            <div class="flex items-center gap-1 shrink-0">
                              <Calendar class="w-3.5 h-3.5" />

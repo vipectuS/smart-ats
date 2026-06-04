@@ -283,55 +283,55 @@ const retryFailure = async (resumeId: string) => {
 }
 </script>
 <template>
-  <article class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
-    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-      <div>
+  <article class="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-4 border-b border-slate-100 p-6 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0">
         <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2"><AlertTriangle class="w-5 h-5 text-rose-500" />最新解析失败流水</h2>
         <p class="mt-1 text-sm text-slate-500">追踪队列异步解析错误日志，并沉淀人工复核结论。</p>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end lg:justify-end">
         <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
           结论筛选
           <select
             :value="reviewStatusFilter"
             @change="onFilterChange(($event.target as HTMLSelectElement).value)"
-            class="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            class="mt-1 block min-w-[160px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           >
             <option v-for="option in reviewStatusOptions" :key="option.value || 'ALL'" :value="option.value">{{ option.label }}</option>
           </select>
         </label>
-        <button @click="emit('refresh')" class="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 transition flex items-center gap-2"><RefreshCw class="w-4 h-4" />刷新</button>
-        <button @click="exportSummary" :disabled="exportingSummary" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-100 transition flex items-center gap-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"><Download class="w-4 h-4" />{{ exportingSummary ? '导出中...' : '导出汇总' }}</button>
+        <button @click="emit('refresh')" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100"><RefreshCw class="w-4 h-4" />刷新</button>
+        <button @click="exportSummary" :disabled="exportingSummary" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"><Download class="w-4 h-4" />{{ exportingSummary ? '导出中...' : '导出汇总' }}</button>
       </div>
     </div>
 
     <div v-if="summary" class="border-b border-slate-100 bg-white px-6 py-4">
-      <div class="grid gap-3 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.4fr)]">
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.45fr)]">
+        <div class="flex h-full min-h-[132px] flex-col rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">总失败数</p>
-          <p class="mt-2 text-2xl font-bold text-slate-900">{{ summary.totalFailures }}</p>
+          <p class="mt-3 text-3xl font-bold text-slate-900">{{ summary.totalFailures }}</p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="flex h-full min-h-[132px] flex-col rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">未复核</p>
-          <p class="mt-2 text-2xl font-bold text-rose-600">{{ summaryCountMap.UNREVIEWED || 0 }}</p>
+          <p class="mt-3 text-3xl font-bold text-rose-600">{{ summaryCountMap.UNREVIEWED || 0 }}</p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="flex h-full min-h-[132px] flex-col rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">待补充</p>
-          <p class="mt-2 text-2xl font-bold text-amber-600">{{ summaryCountMap.NEEDS_CANDIDATE_UPDATE || 0 }}</p>
+          <p class="mt-3 text-3xl font-bold text-amber-600">{{ summaryCountMap.NEEDS_CANDIDATE_UPDATE || 0 }}</p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="flex h-full min-h-[132px] flex-col rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">允许重试</p>
-          <p class="mt-2 text-2xl font-bold text-emerald-600">{{ summaryCountMap.APPROVED_FOR_RETRY || 0 }}</p>
+          <p class="mt-3 text-3xl font-bold text-emerald-600">{{ summaryCountMap.APPROVED_FOR_RETRY || 0 }}</p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <div class="flex items-center justify-between gap-3">
-            <div>
+        <div class="flex h-full min-h-[132px] flex-col rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">主要失败码</p>
               <p class="mt-1 text-xs text-slate-500">基于当前全量 parse-failure 样本自动聚合。</p>
             </div>
-            <span v-if="summary.lastFailureAt" class="text-xs text-slate-400">最近更新 {{ formatTime(summary.lastFailureAt) }}</span>
+            <span v-if="summary.lastFailureAt" class="shrink-0 text-xs text-slate-400">最近更新 {{ formatTime(summary.lastFailureAt) }}</span>
           </div>
-          <div class="mt-3 flex flex-wrap gap-2">
+          <div class="mt-4 flex flex-wrap gap-2">
             <span v-for="item in summaryTopFailureCodes" :key="item.label" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
               {{ item.label }} · {{ item.value }}
             </span>
@@ -341,7 +341,7 @@ const retryFailure = async (resumeId: string) => {
       </div>
     </div>
 
-    <div class="border-b border-slate-100 bg-slate-50/80 px-6 py-4 space-y-3">
+    <div class="space-y-4 border-b border-slate-100 bg-slate-50/80 px-6 py-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p class="text-sm font-semibold text-slate-800">批量复核操作</p>
@@ -352,12 +352,15 @@ const retryFailure = async (resumeId: string) => {
         </span>
       </div>
 
-      <div class="grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)_auto_auto] lg:items-end">
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-          批量结论
+      <div class="grid gap-3 xl:grid-cols-[220px_minmax(0,1fr)_minmax(320px,360px)]">
+        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">批量结论</div>
+        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">批量备注</div>
+        <div class="hidden xl:block"></div>
+
+        <div class="flex flex-col justify-start">
           <select
             v-model="batchReviewStatus"
-            class="mt-2 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            class="block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           >
             <option
               v-for="option in reviewStatusOptions.filter(item => item.value)"
@@ -367,37 +370,38 @@ const retryFailure = async (resumeId: string) => {
               {{ option.label }}
             </option>
           </select>
-        </label>
+        </div>
 
-        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-          批量备注
+        <div class="flex flex-col justify-start">
           <textarea
             v-model="batchNote"
-            rows="2"
+            rows="3"
             maxlength="1000"
-            class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            class="min-h-[112px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             placeholder="例如：这批样本统一等待候选人补充 PDF 或关键时间线。"
           />
-        </label>
+        </div>
 
-        <button
-          :disabled="batchActionDisabled"
-          @click="runBatchAction('review')"
-          class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-        >
-          <Save class="w-4 h-4" />{{ batchSaving ? '批量保存中...' : '批量保存结论' }}
-        </button>
+        <div class="grid content-start gap-3 xl:grid-cols-1">
+          <button
+            :disabled="batchActionDisabled"
+            @click="runBatchAction('review')"
+            class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            <Save class="w-4 h-4" />{{ batchSaving ? '批量保存中...' : '批量保存结论' }}
+          </button>
 
-        <button
-          :disabled="batchActionDisabled"
-          @click="runBatchAction('retry')"
-          class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          <RotateCcw class="w-4 h-4" />{{ batchRetrying ? '批量重试中...' : '批量重新入队' }}
-        </button>
+          <button
+            :disabled="batchActionDisabled"
+            @click="runBatchAction('retry')"
+            class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            <RotateCcw class="w-4 h-4" />{{ batchRetrying ? '批量重试中...' : '批量重新入队' }}
+          </button>
+        </div>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+      <div class="flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <label class="inline-flex items-center gap-2">
           <input
             type="checkbox"
@@ -407,7 +411,7 @@ const retryFailure = async (resumeId: string) => {
           >
           <span>全选当前列表</span>
         </label>
-        <span>{{ batchNote.length }}/1000</span>
+        <span class="self-end sm:self-auto">{{ batchNote.length }}/1000</span>
       </div>
 
       <div v-if="batchError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ batchError }}</div>

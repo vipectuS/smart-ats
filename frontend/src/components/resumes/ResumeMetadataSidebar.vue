@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+  <div class="min-w-0 space-y-6">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
       <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
         <FileText class="w-4 h-4 text-blue-500" />
         简历元信息
@@ -8,24 +8,24 @@
       <dl class="mt-4 space-y-4 text-sm text-slate-600">
         <div>
           <dt class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Resume ID</dt>
-          <dd class="break-all font-medium text-slate-800 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">{{ resume.id }}</dd>
+          <dd class="break-all rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 font-medium text-slate-800">{{ resume.id }}</dd>
         </div>
         <div>
           <dt class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Raw Reference</dt>
-          <dd class="break-all font-medium text-slate-800 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">{{ resume.rawContentReference }}</dd>
+          <dd class="break-all rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 font-medium text-slate-800">{{ resume.rawContentReference }}</dd>
         </div>
         <div>
           <dt class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Candidate Name</dt>
-          <dd class="font-medium text-slate-800 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">{{ displayName }}</dd>
+          <dd class="break-words rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 font-medium text-slate-800">{{ displayName }}</dd>
         </div>
         <div>
           <dt class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Contact</dt>
-          <dd class="font-medium text-slate-800 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">{{ resume.contactInfo || '未提供' }}</dd>
+          <dd class="break-all rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 font-medium text-slate-800">{{ resume.contactInfo || '未提供' }}</dd>
         </div>
       </dl>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
       <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
         <AlertCircle class="w-4 h-4 text-amber-500" />
         解析状态跟踪
@@ -46,12 +46,12 @@
       </div>
     </div>
     
-    <div class="rounded-2xl border border-slate-200 bg-slate-950 p-6 shadow-sm">
+    <div class="min-w-0 rounded-2xl border border-slate-200 bg-slate-950 p-6 shadow-sm">
       <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
         <Code class="w-4 h-4 text-emerald-400" />
         原始 JSON 
       </h2>
-      <pre class="mt-4 overflow-auto rounded-xl bg-black/50 p-4 text-[0.65rem] leading-6 text-emerald-400 max-h-[300px] border border-slate-800">{{ parsedJson }}</pre>
+      <pre class="mt-4 max-h-[420px] w-full overflow-auto rounded-xl border border-slate-800 bg-black/50 p-4 text-[0.72rem] leading-6 text-emerald-400">{{ parsedJson }}</pre>
     </div>
   </div>
 </template>

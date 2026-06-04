@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col pt-4 px-6 space-y-6 overflow-hidden bg-slate-50">
+  <div class="min-h-full flex flex-col space-y-6 bg-slate-50 px-6 pt-4">
     <div v-if="feedback" :class="feedback.type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'" class="rounded-2xl border px-5 py-4 text-sm shadow-sm flex items-start gap-2">
       <AlertCircle class="w-4 h-4 flex-shrink-0 mt-0.5" />
       {{ feedback.message }}
@@ -28,7 +28,7 @@
             <h1 class="text-3xl font-bold text-slate-900">{{ job.title }}</h1>
             <p class="mt-2 text-sm text-slate-500 font-medium">{{ jobMeta }}</p>
           </div>
-          <p class="max-w-3xl text-sm leading-7 text-slate-600 pt-2 border-t border-slate-100">{{ job.description }}</p>
+          <p class="max-w-3xl text-sm leading-7 text-slate-600 pt-2 border-t border-slate-100">{{ cleanedJobDescription }}</p>
         </div>
 
         <div class="flex flex-col gap-4 flex-shrink-0 w-full lg:w-72">
@@ -80,8 +80,7 @@
         </div>
       </div>
 
-      <!-- 可滚动的详情区域 -->
-      <div class="flex-1 overflow-y-auto min-h-0 space-y-6 pb-8">
+      <div class="space-y-6 pb-8">
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
            <CandidateMatchAnalysis 
              :recommendation="recommendation"
@@ -173,6 +172,11 @@ const fitBandClass = computed(() => {
     case 'LOW': return 'bg-amber-100 text-amber-800';
     default: return 'bg-slate-100 text-slate-700';
   }
+});
+
+const cleanedJobDescription = computed(() => {
+  const rawDescription = String(job.value?.description || '').trim();
+  return rawDescription.replace(/\n*\[Dataset\][\s\S]*$/i, '').trim();
 });
 
 const jobMeta = computed(() => {

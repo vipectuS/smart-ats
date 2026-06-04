@@ -54,6 +54,13 @@ export interface BrowserResumeUploadPayload {
 
 export const MAX_BROWSER_UPLOAD_PREVIEW_PAGES = 3;
 
+class ResumePreprocessValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ResumePreprocessValidationError';
+  }
+}
+
 let pdfiumLibraryPromise: Promise<PDFiumLibrary> | null = null;
 
 const sanitizeFileName = (fileName: string) => fileName
@@ -140,6 +147,31 @@ const describeError = (error: unknown) => {
   return 'unknown error';
 };
 
+const estimateInkCoverage = (rgbaData: Uint8Array) => {
+  if (rgbaData.length < 4) {
+    return 0;
+  }
+
+  let sampledPixels = 0;
+  let nonBlankPixels = 0;
+
+  for (let offset = 0; offset <= rgbaData.length - 4; offset += 32) {
+    sampledPixels += 1;
+
+    const red = rgbaData[offset];
+    const green = rgbaData[offset + 1];
+    const blue = rgbaData[offset + 2];
+    const alpha = rgbaData[offset + 3];
+    const brightness = (red + green + blue) / 3;
+
+    if (alpha > 16 && brightness < 245) {
+      nonBlankPixels += 1;
+    }
+  }
+
+  return sampledPixels === 0 ? 0 : nonBlankPixels / sampledPixels;
+};
+
 const buildFallbackResult = async (
   file: File,
   sanitizedName: string,
@@ -214,6 +246,7 @@ export const preprocessResumePdfInBrowser = async (
     
     const pagePreviews: BrowserResumePagePreview[] = [];
     const warnings: string[] = [];
+    const pageInkCoverageRatios: number[] = [];
 
     if (totalPages > 6) {
       warnings.push('该 PDF 页数较多，浏览器端逐页渲染时间会相应增加。');
@@ -238,8 +271,11 @@ export const preprocessResumePdfInBrowser = async (
         scale: effectiveScale,
         render: 'bitmap',
       });
+      const inkCoverage = estimateInkCoverage(renderedPage.data);
       const textPreview = buildTextPreview(pageText, maxTextPreviewLength);
       const imageDataUrl = rgbaBitmapToJpegDataUrl(renderedPage.data, renderedPage.width, renderedPage.height);
+
+      pageInkCoverageRatios.push(inkCoverage);
 
       pagePreviews.push({
         pageNumber,
@@ -276,6 +312,16 @@ export const preprocessResumePdfInBrowser = async (
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 420);
+
+    const maxInkCoverage = pageInkCoverageRatios.length > 0
+      ? Math.max(...pageInkCoverageRatios)
+      : 0;
+
+    if (!extractedTextPreview && maxInkCoverage < 0.0025) {
+      throw new ResumePreprocessValidationError(
+        '该 PDF 未检测到可解析文字或有效页面内容，疑似空白文件，已拒绝上传。请更换有效简历后重试。',
+      );
+    }
 
     if (!extractedTextPreview) {
       warnings.push('当前 PDF 页面未提取到明显文本，后续解析将更依赖图像或 OCR 能力。');
@@ -316,6 +362,10 @@ export const preprocessResumePdfInBrowser = async (
 
     return result;
   } catch (error) {
+    if (error instanceof ResumePreprocessValidationError) {
+      throw error;
+    }
+
     console.error('Failed to preprocess PDF in browser', error);
     const fallbackPageCount = (() => {
       try {

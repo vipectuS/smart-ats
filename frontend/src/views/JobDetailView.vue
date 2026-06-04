@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col pt-4 px-6 space-y-6 overflow-hidden bg-slate-50">
+  <div class="min-h-full flex flex-col space-y-6 bg-slate-50 px-6 pt-4">
     <!-- Header -->
     <div class="flex-shrink-0 flex flex-col bg-white p-6 rounded-2xl border border-slate-200 shadow-sm gap-4" v-if="job">
       <div class="flex justify-between items-center">
@@ -65,8 +65,7 @@
       </div>
     </div>
 
-    <!-- Scrollable Content -->
-    <div class="flex-1 overflow-y-auto min-h-0 space-y-6 pb-6">
+    <div class="space-y-6 pb-6">
       <div v-if="pageFeedback" :class="pageFeedback.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'" class="rounded-2xl border px-5 py-4 text-sm shadow-sm flex items-start gap-2">
         <AlertCircle class="w-4 h-4 flex-shrink-0 mt-0.5" />
         {{ pageFeedback.message }}

@@ -1,6 +1,6 @@
 <template>
-  <div class="h-full overflow-y-auto bg-slate-50 p-8">
-    <div class="mx-auto max-w-7xl space-y-6">
+  <div class="h-full overflow-y-auto bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-[1500px] space-y-6">
       <div v-if="feedback" :class="feedback.type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'" class="rounded-2xl border px-5 py-4 text-sm shadow-sm flex items-center gap-2">
         <AlertCircle class="w-4 h-4 flex-shrink-0" />
         {{ feedback.message }}
@@ -20,7 +20,7 @@
 
       <template v-else-if="resume">
         <header class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div class="space-y-4">
+          <div class="min-w-0 flex-1 space-y-4">
             <button @click="router.push({ name: 'resumes' })" class="inline-flex items-center text-sm font-medium text-slate-500 transition hover:text-blue-600 gap-1.5 focus:outline-none">
               <ArrowLeft class="w-4 h-4" />
               返回简历库
@@ -45,7 +45,7 @@
             </div>
           </div>
 
-          <div class="flex xl:min-w-[260px] flex-col gap-3">
+          <div class="flex w-full shrink-0 flex-col gap-3 xl:w-[280px]">
             <div :class="statusClass" class="rounded-xl border px-5 py-4 text-center shadow-sm">
               <p class="text-xs font-bold uppercase tracking-[0.2em] opacity-80">当前状态</p>
               <p class="mt-2.5 text-2xl font-black capitalize flex justify-center items-center gap-1.5">
@@ -68,21 +68,27 @@
           </div>
         </header>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <ResumeBasicProfile 
-            :hasParsedData="hasParsedData"
-            :summaryText="summaryText"
-            :basicInfo="basicInfo"
-            :skillNames="skillNames"
-            :workExperiences="workExperiences"
-            :educationExperiences="educationExperiences"
-          />
-          <ResumeMetadataSidebar 
-            :resume="resume"
-            :displayName="displayName"
-            :statusHint="statusHint"
-            :parsedJson="parsedJson"
-          />
+        <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.85fr)] 2xl:grid-cols-[minmax(0,1.45fr)_minmax(24rem,0.8fr)]">
+          <div class="min-w-0">
+              <ResumeBasicProfile 
+                class="min-w-0 xl:col-span-7 2xl:col-span-8"
+              :hasParsedData="hasParsedData"
+              :summaryText="summaryText"
+              :basicInfo="basicInfo"
+              :skillNames="skillNames"
+              :workExperiences="workExperiences"
+              :educationExperiences="educationExperiences"
+            />
+          </div>
+          <div class="min-w-0 xl:sticky xl:top-6">
+              <ResumeMetadataSidebar 
+                class="min-w-0 xl:col-span-5 2xl:col-span-4"
+              :resume="resume"
+              :displayName="displayName"
+              :statusHint="statusHint"
+              :parsedJson="parsedJson"
+            />
+          </div>
         </div>
       </template>
     </div>
